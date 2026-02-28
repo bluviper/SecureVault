@@ -1,0 +1,7 @@
+
+*.vault
+*.vault:Zone.Identifier
+index.html:Zone.Identifier
+GEMINI.md:Zone.Identifier
+.DS_Store
+node_modules/

@@ -414,10 +414,10 @@
                 </div>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
                 <div class="input-group">
-                    <label>Import from CSV</label>
-                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">Format: Service,Username,Password,Notes</p>
-                    <button class="secondary" onclick="document.getElementById('csv-input').click()">Upload CSV</button>
-                    <input type="file" id="csv-input" class="hidden" accept=".csv" onchange="handleCSVImport(event)">
+                    <label>Import Data</label>
+                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">Supported: .csv or .json (Bitwarden, LastPass, Generic).</p>
+                    <button class="secondary" onclick="document.getElementById('import-input').click()" style="width: 100%;">Upload CSV or JSON</button>
+                    <input type="file" id="import-input" class="hidden" accept=".csv,.json" onchange="handleUniversalImport(event)">
                 </div>
                 <hr style="border: 0; border-top: 1px solid var(--border); margin: 20px 0;">
                 <div class="input-group">
@@ -601,7 +601,21 @@
         localStorage.setItem('theme', isLight ? 'light' : 'dark');
     }
 
-    // --- CSV Import ---
+    // --- Import Handling ---
+    function handleUniversalImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const extension = file.name.split('.').pop().toLowerCase();
+        
+        if (extension === 'csv') {
+            handleCSVImport(event);
+        } else if (extension === 'json') {
+            handleJSONImport(event);
+        } else {
+            alert("Unsupported file type. Please use .csv or .json");
+        }
+    }
+
     function handleCSVImport(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -609,22 +623,105 @@
         reader.onload = (e) => {
             const content = e.target.result;
             const rows = parseCSV(content);
+            if (rows.length === 0) return;
+
             let count = 0;
-            rows.forEach(parts => {
-                if (parts.length >= 3 && parts[0] && parts[2]) {
+            const header = rows[0].map(h => String(h).toLowerCase());
+            
+            const findIndex = (options) => {
+                for (const opt of options) {
+                    const idx = header.indexOf(opt.toLowerCase());
+                    if (idx !== -1) return idx;
+                }
+                return -1;
+            };
+
+            const serviceIdx = findIndex(['service', 'name', 'url', 'title']);
+            const userIdx = findIndex(['username', 'login_username', 'user']);
+            const passIdx = findIndex(['password', 'login_password', 'pass']);
+            const notesIdx = findIndex(['notes', 'extra', 'description']);
+            const categoryIdx = findIndex(['category', 'folder', 'grouping']);
+
+            const hasHeader = (serviceIdx !== -1 || userIdx !== -1 || passIdx !== -1);
+            const startRow = hasHeader ? 1 : 0;
+
+            for (let i = startRow; i < rows.length; i++) {
+                const row = rows[i];
+                if (row.length < 2) continue;
+
+                let service = "", user = "", pass = "", notes = "", category = "General";
+
+                if (hasHeader) {
+                    if (serviceIdx !== -1) service = row[serviceIdx] || "";
+                    if (userIdx !== -1) user = row[userIdx] || "";
+                    if (passIdx !== -1) pass = row[passIdx] || "";
+                    if (notesIdx !== -1) notes = row[notesIdx] || "";
+                    if (categoryIdx !== -1) category = row[categoryIdx] || "General";
+                } else {
+                    service = row[0] || "";
+                    user = row[1] || "";
+                    pass = row[2] || "";
+                    notes = row[3] || "";
+                }
+
+                if (service && pass) {
                     vaultData.push({
-                        id: Date.now() + count,
-                        category: 'General',
-                        service: parts[0],
-                        user: parts[1] || '',
-                        pass: parts[2],
-                        notes: parts[3] || ''
+                        id: Date.now() + Math.floor(Math.random() * 1000) + count,
+                        category: category || 'General',
+                        service: service,
+                        user: user,
+                        pass: pass,
+                        notes: notes
                     });
                     count++;
                 }
-            });
+            }
             renderVault();
             showToast(`Imported ${count} entries!`);
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    }
+
+    function handleJSONImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const content = JSON.parse(e.target.result);
+                const items = Array.isArray(content) ? content : (content.items || []);
+                let count = 0;
+                items.forEach(item => {
+                    let service = item.service || item.name || item.title;
+                    let user = item.user || item.username || "";
+                    let pass = item.pass || item.password || "";
+                    let notes = item.notes || item.notes || "";
+                    let category = item.category || item.folder || "General";
+
+                    if (item.login) {
+                        if (!user) user = item.login.username || "";
+                        if (!pass) pass = item.login.password || "";
+                    }
+
+                    if (service && pass) {
+                        vaultData.push({
+                            id: Date.now() + Math.floor(Math.random() * 1000) + count,
+                            category: category || 'General',
+                            service: service,
+                            user: user,
+                            pass: pass,
+                            notes: notes
+                        });
+                        count++;
+                    }
+                });
+                renderVault();
+                showToast(`Imported ${count} entries!`);
+                event.target.value = '';
+            } catch (err) {
+                alert("Error parsing JSON: " + err.message);
+            }
         };
         reader.readAsText(file);
     }

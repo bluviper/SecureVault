@@ -233,18 +233,17 @@
                         <div class="bento-sub">Identical password matches</div>
                     </div>
 
-                    <div class="bento-card bento-secure">
+                    <div class="bento-card bento-vulnerable cursor-pointer" onclick="filterByVulnerable()" title="Filter to vulnerable entries (< 12 chars)">
                         <div class="bento-header">
-                            <span class="bento-label">Secure</span>
-                            <div class="bento-icon text-success">
+                            <span class="bento-label">Vulnerable</span>
+                            <div class="bento-icon text-warning">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
                             </div>
                         </div>
-                        <div class="bento-value text-success" id="dash-secure">0</div>
-                        <div class="bento-sub">High strength rating</div>
+                        <div class="bento-value text-warning" id="dash-vulnerable">0</div>
+                        <div class="bento-sub">Length &lt; 12 characters</div>
                     </div>
                 </div>
 
@@ -484,6 +483,11 @@
                         <div id="modal-strength-fill" class="strength-bar-fill strength-none"></div>
                     </div>
                     <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
+                </div>
+
+                <div class="modal-input-field">
+                    <label for="entry-tags">Tags (Optional, comma-separated)</label>
+                    <input type="text" id="entry-tags" placeholder="e.g. work, email, critical">
                 </div>
 
                 <div class="modal-input-field">

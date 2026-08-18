@@ -15,7 +15,9 @@ import {
     base64ToUint8,
     deriveKey,
     encrypt,
-    decrypt
+    decrypt,
+    parseCSVContent,
+    parseJSONImportData
 } from '../src/app.js';
 
 test('Password Entropy Calculation', () => {
@@ -78,4 +80,33 @@ test('AES-GCM Encryption / Decryption Round-Trip', async () => {
     // Decrypt
     const decrypted = await decrypt(encrypted.data, encrypted.iv, key);
     assert.deepStrictEqual(decrypted, mockData);
+});
+
+test('CSV Content Parser', () => {
+    const sampleCsv = 'Service,Username,Password,Notes\n"Google","user@gmail.com","pass123","Main account"\n"GitHub","gitdev","token456","Dev key"';
+    const rows = parseCSVContent(sampleCsv);
+    
+    assert.strictEqual(rows.length, 3);
+    assert.deepStrictEqual(rows[0], ['Service', 'Username', 'Password', 'Notes']);
+    assert.strictEqual(rows[1][0], 'Google');
+    assert.strictEqual(rows[1][2], 'pass123');
+    assert.strictEqual(rows[2][1], 'gitdev');
+});
+
+test('JSON Import Data Parser (Bitwarden & Generic formats)', () => {
+    const sampleJson = JSON.stringify([
+        { title: 'Amazon', login: { username: 'buyer@amazon.com', password: 'shoppingpass' }, notes: 'Prime member' },
+        { service: 'Slack', user: 'dev', pass: 'chatpass', category: 'Work', tags: ['work', 'chat'] }
+    ]);
+    
+    const parsed = parseJSONImportData(sampleJson);
+    assert.strictEqual(parsed.length, 2);
+    
+    assert.strictEqual(parsed[0].service, 'Amazon');
+    assert.strictEqual(parsed[0].user, 'buyer@amazon.com');
+    assert.strictEqual(parsed[0].pass, 'shoppingpass');
+    
+    assert.strictEqual(parsed[1].service, 'Slack');
+    assert.strictEqual(parsed[1].category, 'Work');
+    assert.deepStrictEqual(parsed[1].tags, ['work', 'chat']);
 });

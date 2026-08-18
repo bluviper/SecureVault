@@ -611,10 +611,54 @@ button {
     background: var(--accent-gradient);
     border: none;
     color: #ffffff;
+    position: relative;
+    overflow: hidden;
 }
 
 .btn-save:hover {
     opacity: 0.9;
+}
+
+.btn-save:active::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200%;
+    height: 200%;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    animation: saveRipple 0.5s ease-out;
+}
+
+@keyframes saveRipple {
+    to {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}
+
+.offline-badge.strict-offline {
+    color: var(--warning);
+    background: var(--warning-dim);
+}
+
+.tags-container {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.tag-pill {
+    font-size: 0.62rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    background: rgba(6, 182, 212, 0.1);
+    color: var(--accent-primary);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+    border-radius: 4px;
 }
 
 .btn-lock {
@@ -1674,18 +1718,17 @@ input[type="range"]::-webkit-slider-thumb:hover {
                         <div class="bento-sub">Identical password matches</div>
                     </div>
 
-                    <div class="bento-card bento-secure">
+                    <div class="bento-card bento-vulnerable cursor-pointer" onclick="filterByVulnerable()" title="Filter to vulnerable entries (< 12 chars)">
                         <div class="bento-header">
-                            <span class="bento-label">Secure</span>
-                            <div class="bento-icon text-success">
+                            <span class="bento-label">Vulnerable</span>
+                            <div class="bento-icon text-warning">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
                                 </svg>
                             </div>
                         </div>
-                        <div class="bento-value text-success" id="dash-secure">0</div>
-                        <div class="bento-sub">High strength rating</div>
+                        <div class="bento-value text-warning" id="dash-vulnerable">0</div>
+                        <div class="bento-sub">Length &lt; 12 characters</div>
                     </div>
                 </div>
 
@@ -1925,6 +1968,11 @@ input[type="range"]::-webkit-slider-thumb:hover {
                         <div id="modal-strength-fill" class="strength-bar-fill strength-none"></div>
                     </div>
                     <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
+                </div>
+
+                <div class="modal-input-field">
+                    <label for="entry-tags">Tags (Optional, comma-separated)</label>
+                    <input type="text" id="entry-tags" placeholder="e.g. work, email, critical">
                 </div>
 
                 <div class="modal-input-field">
@@ -2256,19 +2304,22 @@ function renderDashboard() {
     let total = vaultData.length;
     let weak = 0;
     let reused = 0;
-    let secure = 0;
+    let vulnerable = 0;
     
     vaultData.forEach(item => {
         const rating = assessPasswordStrength(item.pass);
         if (rating.label === 'Weak') weak++;
-        if (rating.label === 'Strong' && item.pass.length >= 12) secure++;
+        if (item.pass.length < 12) vulnerable++;
         if (item.isReused) reused++;
     });
     
     document.getElementById('dash-total').innerText = total;
     document.getElementById('dash-weak').innerText = weak;
     document.getElementById('dash-reused').innerText = reused;
-    document.getElementById('dash-secure').innerText = secure;
+    const vulnEl = document.getElementById('dash-vulnerable');
+    if (vulnEl) vulnEl.innerText = vulnerable;
+    
+    populateCategorySelectors();
 }
 
 /**
@@ -2290,6 +2341,15 @@ function filterByReused() {
 }
 
 /**
+ * Filters credential list by password vulnerability (< 12 chars).
+ */
+function filterByVulnerable() {
+    activeDashboardFilter = 'vulnerable';
+    updateFilterBarUI();
+    renderVault();
+}
+
+/**
  * Clear dashboard filtering criteria.
  */
 function clearDashboardFilters() {
@@ -2306,7 +2366,9 @@ function updateFilterBarUI() {
     const label = document.getElementById('filter-alert-text');
     if (activeDashboardFilter) {
         bar.classList.remove('hidden');
-        label.innerText = activeDashboardFilter === 'weak' ? 'Weak Passwords' : 'Reused Passwords';
+        if (activeDashboardFilter === 'weak') label.innerText = 'Weak Passwords';
+        else if (activeDashboardFilter === 'reused') label.innerText = 'Reused Passwords';
+        else if (activeDashboardFilter === 'vulnerable') label.innerText = 'Vulnerable Passwords (< 12 chars)';
     } else {
         bar.classList.add('hidden');
     }
@@ -2326,9 +2388,11 @@ function renderVault() {
     
     const filtered = vaultData.filter(item => {
         // Search matches
+        const matchesTags = (item.tags || []).some(t => t.toLowerCase().includes(searchQuery));
         const matchesSearch = item.service.toLowerCase().includes(searchQuery) || 
                               item.user.toLowerCase().includes(searchQuery) ||
-                              (item.notes || '').toLowerCase().includes(searchQuery);
+                              (item.notes || '').toLowerCase().includes(searchQuery) ||
+                              matchesTags;
         
         // Category filter
         const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
@@ -2339,6 +2403,8 @@ function renderVault() {
             matchesDashboard = assessPasswordStrength(item.pass).label === 'Weak';
         } else if (activeDashboardFilter === 'reused') {
             matchesDashboard = item.isReused;
+        } else if (activeDashboardFilter === 'vulnerable') {
+            matchesDashboard = item.pass.length < 12;
         }
         
         return matchesSearch && matchesCategory && matchesDashboard;
@@ -2380,6 +2446,19 @@ function renderVault() {
         const userP = document.createElement('p');
         userP.className = 'item-user-text';
         userP.innerText = item.user || 'No username';
+
+        // Render tags if present
+        if (item.tags && item.tags.length > 0) {
+            const tagsContainer = document.createElement('div');
+            tagsContainer.className = 'tags-container';
+            item.tags.forEach(t => {
+                const tagPill = document.createElement('span');
+                tagPill.className = 'tag-pill';
+                tagPill.innerText = `#${t}`;
+                tagsContainer.appendChild(tagPill);
+            });
+            info.appendChild(tagsContainer);
+        }
         
         // Security visual markers
         const secRow = document.createElement('div');
@@ -2457,15 +2536,65 @@ function renderVault() {
     });
 }
 
+// --- Category & Tag Management ---
+let defaultCategories = ['General', 'Work', 'Social', 'Banking'];
+
+function getCategories() {
+    const set = new Set(defaultCategories);
+    vaultData.forEach(i => {
+        if (i.category) set.add(i.category);
+    });
+    return Array.from(set);
+}
+
+function populateCategorySelectors() {
+    if (typeof document === 'undefined') return;
+    const categories = getCategories();
+    
+    const filterSel = document.getElementById('filter-category');
+    if (filterSel) {
+        const cur = filterSel.value || 'All';
+        filterSel.innerHTML = `<option value="All">All Categories</option>` +
+            categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+        if (categories.includes(cur) || cur === 'All') filterSel.value = cur;
+    }
+    
+    const modalSel = document.getElementById('entry-category');
+    if (modalSel) {
+        const cur = modalSel.value || 'General';
+        modalSel.innerHTML = categories.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('') +
+            `<option value="__custom__">+ Custom Category...</option>`;
+        if (categories.includes(cur)) modalSel.value = cur;
+        modalSel.onchange = handleCategoryChange;
+    }
+}
+
+function handleCategoryChange(e) {
+    if (e.target.value === '__custom__') {
+        const val = prompt("Enter new category name:");
+        if (val && val.trim()) {
+            const clean = val.trim();
+            if (!defaultCategories.includes(clean)) defaultCategories.push(clean);
+            populateCategorySelectors();
+            e.target.value = clean;
+        } else {
+            e.target.value = 'General';
+        }
+    }
+}
+
 // --- Entry Editing & Addition Modal ---
 
 function showAddModal() {
     currentEditId = null;
     document.getElementById('modal-title').innerText = 'Add Entry';
+    populateCategorySelectors();
     document.getElementById('entry-category').value = 'General';
     document.getElementById('entry-service').value = '';
     document.getElementById('entry-user').value = '';
     document.getElementById('entry-pass').value = '';
+    const tagsEl = document.getElementById('entry-tags');
+    if (tagsEl) tagsEl.value = '';
     document.getElementById('entry-notes').value = '';
     
     // Visibility icon defaults
@@ -2483,10 +2612,13 @@ function showEditModal(id) {
     
     currentEditId = id;
     document.getElementById('modal-title').innerText = 'Edit Entry';
+    populateCategorySelectors();
     document.getElementById('entry-category').value = item.category || 'General';
     document.getElementById('entry-service').value = item.service;
     document.getElementById('entry-user').value = item.user || '';
     document.getElementById('entry-pass').value = item.pass;
+    const tagsEl = document.getElementById('entry-tags');
+    if (tagsEl) tagsEl.value = (item.tags || []).join(', ');
     document.getElementById('entry-notes').value = item.notes || '';
     
     const pwInput = document.getElementById('entry-pass');
@@ -2521,11 +2653,14 @@ function saveEntry() {
     const service = document.getElementById('entry-service').value.trim();
     const user = document.getElementById('entry-user').value.trim();
     const pass = document.getElementById('entry-pass').value;
+    const tagsRaw = document.getElementById('entry-tags') ? document.getElementById('entry-tags').value.trim() : '';
     const notes = document.getElementById('entry-notes').value;
     
     if (!service || !pass) {
         return alert("Service name and password are required.");
     }
+    
+    const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : [];
     
     if (currentEditId !== null) {
         const index = vaultData.findIndex(i => i.id === currentEditId);
@@ -2534,7 +2669,8 @@ function saveEntry() {
             category, 
             service, 
             user, 
-            pass, 
+            pass,
+            tags,
             notes 
         };
         showToast("Entry updated.");
@@ -2544,7 +2680,8 @@ function saveEntry() {
             category, 
             service, 
             user, 
-            pass, 
+            pass,
+            tags,
             notes 
         });
         showToast("New entry created.");
@@ -2647,42 +2784,49 @@ function handleUniversalImport(event) {
     event.target.value = '';
 }
 
+function parseJSONImportData(jsonString) {
+    const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+    const items = Array.isArray(data) ? data : (data.items || []);
+    const parsed = [];
+    
+    items.forEach((item, index) => {
+        let service = item.service || item.name || item.title || '';
+        let user = item.user || item.username || '';
+        let pass = item.pass || item.password || '';
+        let notes = item.notes || '';
+        let category = item.category || item.folder || 'General';
+        let tagsRaw = item.tags ? (Array.isArray(item.tags) ? item.tags : String(item.tags).split(/[,;]/)) : [];
+        let tags = tagsRaw.map(t => String(t).trim().toLowerCase()).filter(Boolean);
+        
+        if (item.login) {
+            if (!user) user = item.login.username || '';
+            if (!pass) pass = item.login.password || '';
+        }
+        
+        if (service && pass) {
+            parsed.push({
+                id: Date.now() + index,
+                category: category,
+                service: service.trim(),
+                user: user.trim(),
+                pass: pass,
+                tags: tags,
+                notes: notes.trim()
+            });
+        }
+    });
+    return parsed;
+}
+
 function handleJSONImport(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
-            const data = JSON.parse(e.target.result);
-            const items = Array.isArray(data) ? data : (data.items || []);
-            let count = 0;
-            
-            items.forEach(item => {
-                let service = item.service || item.name || item.title || '';
-                let user = item.user || item.username || '';
-                let pass = item.pass || item.password || '';
-                let notes = item.notes || '';
-                let category = item.category || item.folder || 'General';
-                
-                if (item.login) {
-                    if (!user) user = item.login.username || '';
-                    if (!pass) pass = item.login.password || '';
-                }
-                
-                if (service && pass) {
-                    vaultData.push({
-                        id: Date.now() + Math.floor(Math.random() * 1000) + count,
-                        category: category,
-                        service: service,
-                        user: user,
-                        pass: pass,
-                        notes: notes
-                    });
-                    count++;
-                }
-            });
-            
+            const imported = parseJSONImportData(e.target.result);
+            vaultData.push(...imported);
             renderDashboard();
             renderVault();
-            showToast(`Imported ${count} records successfully.`);
+            showToast(`Imported ${imported.length} records successfully.`);
         } catch (err) {
             alert("Error parsing JSON file. Check format.");
         }
@@ -2713,6 +2857,7 @@ function handleCSVImport(file) {
             const passIdx = findIndex(['password', 'login_password', 'pass']);
             const notesIdx = findIndex(['notes', 'extra', 'description']);
             const categoryIdx = findIndex(['category', 'folder', 'grouping']);
+            const tagsIdx = findIndex(['tags', 'tag', 'labels']);
             
             const hasHeader = (serviceIdx !== -1 || userIdx !== -1 || passIdx !== -1);
             const startRow = hasHeader ? 1 : 0;
@@ -2721,7 +2866,7 @@ function handleCSVImport(file) {
                 const row = rows[i];
                 if (row.length < 2) continue;
                 
-                let service = "", user = "", pass = "", notes = "", category = "General";
+                let service = "", user = "", pass = "", notes = "", category = "General", tags = [];
                 
                 if (hasHeader) {
                     if (serviceIdx !== -1) service = row[serviceIdx] || "";
@@ -2729,6 +2874,9 @@ function handleCSVImport(file) {
                     if (passIdx !== -1) pass = row[passIdx] || "";
                     if (notesIdx !== -1) notes = row[notesIdx] || "";
                     if (categoryIdx !== -1) category = row[categoryIdx] || "General";
+                    if (tagsIdx !== -1 && row[tagsIdx]) {
+                        tags = row[tagsIdx].split(/[,;]/).map(t => t.trim().toLowerCase()).filter(Boolean);
+                    }
                 } else {
                     service = row[0] || "";
                     user = row[1] || "";
@@ -2743,6 +2891,7 @@ function handleCSVImport(file) {
                         service: service.trim(),
                         user: user.trim(),
                         pass: pass,
+                        tags: tags,
                         notes: notes.trim()
                     });
                     count++;
@@ -2873,12 +3022,13 @@ function exportToCsv() {
         return alert("Vault is empty or locked.");
     }
     
-    const headers = ["Service", "Username", "Password", "Category", "Notes"];
+    const headers = ["Service", "Username", "Password", "Category", "Tags", "Notes"];
     const rows = vaultData.map(item => [
         item.service,
         item.user,
         item.pass,
         item.category,
+        (item.tags || []).join(';'),
         item.notes || ''
     ]);
     
@@ -2905,6 +3055,33 @@ function confirmWipeSession() {
 }
 
 // --- Interface Helper & Toast Utilities ---
+
+function updateOnlineStatus() {
+    if (typeof document === 'undefined') return;
+    const badge = document.querySelector('.offline-badge');
+    if (!badge) return;
+    if (navigator.onLine) {
+        badge.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
+                <path d="M9.5 8.5l5 5m0-5l-5 5"/>
+            </svg>
+            <span>Secure Local</span>
+        `;
+        badge.className = 'offline-badge';
+        badge.title = 'Offline secure environment';
+    } else {
+        badge.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
+                <path d="M9.5 8.5l5 5m0-5l-5 5"/>
+            </svg>
+            <span>Strict Offline</span>
+        `;
+        badge.className = 'offline-badge strict-offline';
+        badge.title = 'No network connection active (Maximum Security)';
+    }
+}
 
 /**
  * Handles password input visibility toggle (eye SVG switch).
@@ -3006,6 +3183,9 @@ if (typeof window !== 'undefined') {
         window.addEventListener(evt, resetAutoLock, true);
     });
 
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+
     // Window startup hooks
     window.onload = () => {
         // Theme configuration
@@ -3013,6 +3193,8 @@ if (typeof window !== 'undefined') {
             document.body.classList.add('light-mode');
         }
         
+        updateOnlineStatus();
+
         // Active flow switches
         document.getElementById('unlock-prompt').classList.add('hidden');
         document.getElementById('initialize-prompt').classList.remove('hidden');
@@ -3020,15 +3202,6 @@ if (typeof window !== 'undefined') {
 }
 
 // Exports for testing in Node.js environments
-export {
-    calculateEntropy,
-    assessPasswordStrength,
-    deriveKey,
-    encrypt,
-    decrypt,
-    base64ToUint8,
-    uint8ToBase64
-};
 
 </script>
 </body>

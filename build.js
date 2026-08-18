@@ -52,11 +52,14 @@ function build() {
 
         // Inline JS
         if (fs.existsSync(jsPath)) {
-            const js = fs.readFileSync(jsPath, 'utf8');
+            let js = fs.readFileSync(jsPath, 'utf8');
+            // Strip ES module export statements for clean browser script tags
+            js = js.replace(/export\s*\{[^}]*\}[\s;]*/g, '');
+            
             const jsRegex = /<script\s+src="app\.js"\s*><\/script>/i;
             if (jsRegex.test(html)) {
                 html = html.replace(jsRegex, `<script>\n${js}\n</script>`);
-                console.log('  ⚙️ app.js inlined');
+                console.log('  ⚙️ app.js inlined (module exports stripped)');
             } else {
                 console.warn('  ⚠️ Warning: No app.js script tag found in index.html to replace.');
             }

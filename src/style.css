@@ -383,6 +383,29 @@ button {
     gap: 12px;
 }
 
+.auth-switch-container {
+    margin-top: 20px;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+
+.auth-switch-link {
+    color: var(--accent-primary);
+    text-decoration: none;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.auth-switch-link:hover {
+    color: var(--accent-hover);
+    text-decoration: underline;
+}
+
 .hidden {
     display: none !important;
 }

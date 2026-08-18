@@ -33,13 +33,13 @@
                     <span class="eyebrow-tag">Offline-First • Military-Grade</span>
                 </div>
 
-                <!-- Create Vault (No loaded file) -->
+                <!-- Create Vault (First-time setup or new vault) -->
                 <div id="initialize-prompt" class="auth-flow hidden">
-                    <p class="flow-desc">No vault loaded. Set a strong Master Password to initialize a new secure vault.</p>
+                    <p class="flow-desc">Welcome! Set a strong Master Password to create your new encrypted vault.</p>
                     
                     <div class="input-group-outer">
                         <div class="input-group-inner">
-                            <label for="new-master-pw">Master Password</label>
+                            <label for="new-master-pw">Set Master Password</label>
                             <div class="password-field-wrapper">
                                 <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
                                 <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')">
@@ -65,11 +65,16 @@
                             Import .vault File
                         </button>
                     </div>
+
+                    <div class="auth-switch-container">
+                        <span>Already have a vault file?</span>
+                        <a href="#" class="auth-switch-link" onclick="showUnlockPrompt(); return false;">Unlock existing vault</a>
+                    </div>
                 </div>
 
-                <!-- Unlock Vault (Loaded file ready) -->
-                <div id="unlock-prompt" class="auth-flow">
-                    <p class="flow-desc">Enter your Master Password to decrypt and access your credentials.</p>
+                <!-- Unlock Vault (Saved vault or imported file) -->
+                <div id="unlock-prompt" class="auth-flow hidden">
+                    <p class="flow-desc">Welcome back! Enter your Master Password to decrypt and access your credentials.</p>
                     
                     <div class="input-group-outer">
                         <div class="input-group-inner">
@@ -96,8 +101,13 @@
                             </span>
                         </button>
                         <button class="btn-secondary" onclick="triggerFileSelect()">
-                            Load Different File
+                            Import / Load File
                         </button>
+                    </div>
+
+                    <div class="auth-switch-container">
+                        <span>Need a brand new vault?</span>
+                        <a href="#" class="auth-switch-link" onclick="showInitPrompt(); return false;">Create New Vault</a>
                     </div>
                 </div>
                 

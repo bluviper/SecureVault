@@ -9,25 +9,82 @@ if (!fs.existsSync(iconsDir)) {
     fs.mkdirSync(iconsDir, { recursive: true });
 }
 
-// Generate SVG icon
-const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect width="24" height="24" fill="#04060a" rx="5"/>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <path d="M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
-    <path d="M12 11v6"/>
+// 1. Cyber-Shield (Neon Cyan & Obsidian - Keyhole Shield)
+const cyberShieldSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0a0f1d"/>
+            <stop offset="100%" stop-color="#030508"/>
+        </linearGradient>
+        <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#06b6d4"/>
+            <stop offset="100%" stop-color="#3b82f6"/>
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="28" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+    <!-- Outer Shield Frame -->
+    <path d="M64 18 L104 34 V68 C104 92 64 110 64 110 C64 110 24 92 24 68 V34 Z" fill="none" stroke="url(#neonCyan)" stroke-width="7" stroke-linejoin="round"/>
+    <!-- Inner Keyhole -->
+    <circle cx="64" cy="54" r="12" fill="url(#neonCyan)"/>
+    <path d="M57 58 L52 82 H76 L71 58 Z" fill="url(#neonCyan)"/>
 </svg>`;
 
-fs.writeFileSync(path.join(iconsDir, 'icon.svg'), svgContent, 'utf8');
+// 2. Quantum Keyhole (Gold & Titanium Square)
+const quantumKeyholeSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+        <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#fbbf24"/>
+            <stop offset="100%" stop-color="#d97706"/>
+        </linearGradient>
+        <linearGradient id="titanium" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e293b"/>
+            <stop offset="100%" stop-color="#0f172a"/>
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="28" fill="url(#titanium)" stroke="#fbbf24" stroke-width="2"/>
+    <circle cx="64" cy="64" r="42" fill="none" stroke="url(#goldGrad)" stroke-width="5" stroke-dasharray="8 4"/>
+    <circle cx="64" cy="52" r="14" fill="url(#goldGrad)"/>
+    <path d="M56 56 L50 86 H78 L72 56 Z" fill="url(#goldGrad)"/>
+</svg>`;
 
-// Also create a tiny 1x1 base PNG or standard canvas PNG for maximum compatibility
-// A valid 128x128 cyan shield PNG binary
-const basePngHex = 
-  "89504e470d0a1a0a0000000d4948445200000010000000100806000000fff31f7c0000001949444154388d" +
-  "c591b10d002008434d31fe1f99c8052a5c4004c2c5053401784f18167f2b0000000049454e44ae426082";
+// 3. Cyber Lock & Key (Vibrant Laser Sapphire)
+const cyberLockSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+        <linearGradient id="laserBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8"/>
+            <stop offset="100%" stop-color="#818cf8"/>
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="28" fill="#090d16" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+    <!-- Padlock Shackle -->
+    <path d="M44 56 V38 C44 26 53 18 64 18 C75 18 84 26 84 38 V56" fill="none" stroke="url(#laserBlue)" stroke-width="8" stroke-linecap="round"/>
+    <!-- Padlock Body -->
+    <rect x="32" y="54" width="64" height="52" rx="14" fill="#0f172a" stroke="url(#laserBlue)" stroke-width="6"/>
+    <!-- Central Keyhole -->
+    <circle cx="64" cy="74" r="8" fill="url(#laserBlue)"/>
+    <rect x="61" y="74" width="6" height="16" fill="url(#laserBlue)"/>
+</svg>`;
 
-const pngBuffer = Buffer.from(basePngHex, 'hex');
-fs.writeFileSync(path.join(iconsDir, 'icon16.png'), pngBuffer);
-fs.writeFileSync(path.join(iconsDir, 'icon48.png'), pngBuffer);
-fs.writeFileSync(path.join(iconsDir, 'icon128.png'), pngBuffer);
+// 4. Hex-Vault (Minimalist Brutalist Hexagon)
+const hexVaultSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+        <linearGradient id="emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10b981"/>
+            <stop offset="100%" stop-color="#059669"/>
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="28" fill="#04070a"/>
+    <polygon points="64,16 106,40 106,88 64,112 22,88 22,40" fill="none" stroke="url(#emerald)" stroke-width="6"/>
+    <circle cx="64" cy="64" r="16" fill="url(#emerald)"/>
+    <rect x="61" y="64" width="6" height="24" rx="3" fill="url(#emerald)"/>
+</svg>`;
 
-console.log('✅ Created extension icons in extension/icons/');
+fs.writeFileSync(path.join(iconsDir, 'icon-cyber-shield.svg'), cyberShieldSvg, 'utf8');
+fs.writeFileSync(path.join(iconsDir, 'icon-quantum-keyhole.svg'), quantumKeyholeSvg, 'utf8');
+fs.writeFileSync(path.join(iconsDir, 'icon-cyber-lock.svg'), cyberLockSvg, 'utf8');
+fs.writeFileSync(path.join(iconsDir, 'icon-hex-vault.svg'), hexVaultSvg, 'utf8');
+
+// Default primary icon set
+fs.writeFileSync(path.join(iconsDir, 'icon.svg'), cyberShieldSvg, 'utf8');
+
+console.log('✅ Created 4 premium SVG extension icon themes in extension/icons/');

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault Extension</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="popup-container">
+        <!-- HEADER -->
+        <header class="popup-header">
+            <div class="brand">
+                <div class="shield-logo">🛡️</div>
+                <span class="brand-title">SecureVault</span>
+            </div>
+            <div class="header-actions">
+                <button id="btn-sync" class="btn-icon" title="Sync with GitHub">☁️</button>
+                <button id="btn-lock" class="btn-icon hidden" title="Lock Vault">🔒</button>
+            </div>
+        </header>
+
+        <!-- LOCK SCREEN -->
+        <div id="view-lock" class="view-pane active">
+            <div class="lock-card">
+                <h2>Unlock Vault</h2>
+                <p class="subtitle">Enter your Master Password to access credentials.</p>
+
+                <div class="input-group">
+                    <input type="password" id="popup-master-pass" placeholder="Master Password...">
+                    <button id="btn-unlock" class="btn-primary">Unlock</button>
+                </div>
+
+                <div class="divider"><span>OR</span></div>
+
+                <div class="action-buttons">
+                    <button id="btn-load-file" class="btn-secondary">📁 Load .vault File</button>
+                    <input type="file" id="popup-file-input" class="hidden" accept=".vault,.json">
+                    <button id="btn-pull-gh" class="btn-secondary">☁️ Pull from GitHub</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- UNLOCKED VAULT SCREEN -->
+        <div id="view-vault" class="view-pane">
+            <div class="search-bar">
+                <input type="text" id="popup-search" placeholder="Search passwords or tags...">
+            </div>
+
+            <div id="domain-match-banner" class="domain-banner hidden">
+                <span>Matching current site: <strong id="current-domain">example.com</strong></span>
+            </div>
+
+            <div id="credentials-list" class="credentials-list">
+                <!-- Dynamic cards -->
+            </div>
+        </div>
+
+        <!-- FOOTER NAV -->
+        <footer id="popup-footer" class="popup-footer hidden">
+            <button id="tab-passwords" class="nav-btn active">🔑 Vault</button>
+            <button id="tab-generator" class="nav-btn">🎲 Generator</button>
+        </footer>
+
+        <!-- GENERATOR VIEW -->
+        <div id="view-generator" class="view-pane">
+            <div class="generator-box">
+                <div class="pass-result" id="gen-result">Select options</div>
+                <button id="btn-copy-gen" class="btn-primary">📋 Copy Password</button>
+                
+                <div class="gen-controls">
+                    <label>Length: <span id="gen-length-val">16</span></label>
+                    <input type="range" id="gen-length" min="8" max="32" value="16">
+                </div>
+            </div>
+        </div>
+
+        <!-- TOAST ALERTS -->
+        <div id="toast" class="toast hidden">
+            <span id="toast-msg">Notification</span>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

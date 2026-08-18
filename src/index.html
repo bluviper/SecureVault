@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureVault — Portable Password Manager</title>
+    <!-- Preconnect & Load Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Link to external stylesheet (inlined during build) -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Ambient background decorative glowing orbs (Ethereal Glass theme) -->
+<div class="glow-orb glow-orb-1"></div>
+<div class="glow-orb glow-orb-2"></div>
+
+<div class="app-wrapper">
+    <!-- LOCK & INITIALIZE SCREEN -->
+    <div id="lock-screen" class="lock-container">
+        <div class="lock-card-outer">
+            <div class="lock-card-inner">
+                <div class="brand-header">
+                    <div class="shield-logo">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
+                            <path d="M12 11v6"/>
+                        </svg>
+                    </div>
+                    <h1>SecureVault</h1>
+                    <span class="eyebrow-tag">Offline-First • Military-Grade</span>
+                </div>
+
+                <!-- Create Vault (No loaded file) -->
+                <div id="initialize-prompt" class="auth-flow hidden">
+                    <p class="flow-desc">No vault loaded. Set a strong Master Password to initialize a new secure vault.</p>
+                    
+                    <div class="input-group-outer">
+                        <div class="input-group-inner">
+                            <label for="new-master-pw">Master Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
+                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')">
+                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group-vertical">
+                        <button class="btn-primary" onclick="initializeVault()">
+                            Create New Vault
+                            <span class="btn-icon-circle">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                                </svg>
+                            </span>
+                        </button>
+                        <button class="btn-secondary" onclick="triggerFileSelect()">
+                            Import .vault File
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Unlock Vault (Loaded file ready) -->
+                <div id="unlock-prompt" class="auth-flow">
+                    <p class="flow-desc">Enter your Master Password to decrypt and access your credentials.</p>
+                    
+                    <div class="input-group-outer">
+                        <div class="input-group-inner">
+                            <label for="master-pw">Master Password</label>
+                            <div class="password-field-wrapper">
+                                <input type="password" id="master-pw" placeholder="Enter password to unlock...">
+                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('master-pw')">
+                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="btn-group-vertical">
+                        <button class="btn-primary" onclick="unlockVault()">
+                            Unlock Vault
+                            <span class="btn-icon-circle">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                                </svg>
+                            </span>
+                        </button>
+                        <button class="btn-secondary" onclick="triggerFileSelect()">
+                            Load Different File
+                        </button>
+                    </div>
+                </div>
+                
+                <input type="file" id="file-input" class="hidden" accept=".json,.vault" onchange="handleFileSelect(event)">
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP SCREEN -->
+    <div id="app-ui" class="app-container hidden">
+        <!-- Visual Auto-Lock Progress Bar -->
+        <div class="auto-lock-progressbar-container">
+            <div id="auto-lock-progressbar" class="auto-lock-progressbar-fill"></div>
+        </div>
+
+        <header class="app-header">
+            <div class="header-left">
+                <span class="theme-toggle" onclick="toggleTheme()" title="Toggle Theme">
+                    <svg class="theme-icon-dark" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                    </svg>
+                </span>
+                <div class="status-badge">
+                    <span class="status-indicator-dot online"></span>
+                    <span id="vault-status-text">Vault Unlocked</span>
+                </div>
+            </div>
+
+            <div class="header-right">
+                <div class="offline-badge" title="Offline secure environment">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
+                        <path d="M9.5 8.5l5 5m0-5l-5 5"/>
+                    </svg>
+                    <span>Secure Local</span>
+                </div>
+                <a href="index.html" download="SecureVault.html" class="action-link" title="Download portable standalone HTML file">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    <span>Download App</span>
+                </a>
+                <button class="btn-header btn-save" onclick="saveVaultFile()" title="Save all changes to disk">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                        <polyline points="17 21 17 13 7 13 7 21"/>
+                        <polyline points="7 3 7 8 15 8"/>
+                    </svg>
+                    <span>Save</span>
+                </button>
+                <button class="btn-header btn-lock" onclick="lockVault()" title="Lock vault immediately">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span>Lock</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <nav class="app-nav">
+            <div class="tab active" id="tab-btn-vault" onclick="switchTab('vault')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                <span>Credentials</span>
+            </div>
+            <div class="tab" id="tab-btn-generator" onclick="switchTab('generator')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <polyline points="16 18 22 12 16 6"/>
+                    <polyline points="8 6 2 12 8 18"/>
+                </svg>
+                <span>Generator</span>
+            </div>
+            <div class="tab" id="tab-btn-settings" onclick="switchTab('settings')">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>Settings</span>
+            </div>
+        </nav>
+
+        <main class="app-content">
+            <!-- 1. VAULT VIEW -->
+            <div id="tab-vault" class="tab-pane active">
+                
+                <!-- BENTO GRID DASHBOARD -->
+                <div class="dashboard-bento">
+                    <div class="bento-card bento-total">
+                        <div class="bento-header">
+                            <span class="bento-label">Credentials</span>
+                            <div class="bento-icon">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="12" cy="7" r="4"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bento-value" id="dash-total">0</div>
+                        <div class="bento-sub">Total saved items</div>
+                    </div>
+
+                    <div class="bento-card bento-weak cursor-pointer" onclick="filterByStrength('weak')" title="Filter to weak entries">
+                        <div class="bento-header">
+                            <span class="bento-label">Weak Passwords</span>
+                            <div class="bento-icon text-danger">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                                    <line x1="12" y1="9" x2="12" y2="13"/>
+                                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bento-value text-danger" id="dash-weak">0</div>
+                        <div class="bento-sub">Require immediate update</div>
+                    </div>
+
+                    <div class="bento-card bento-reused cursor-pointer" onclick="filterByReused()" title="Filter to reused entries">
+                        <div class="bento-header">
+                            <span class="bento-label">Reused</span>
+                            <div class="bento-icon text-warning">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bento-value text-warning" id="dash-reused">0</div>
+                        <div class="bento-sub">Identical password matches</div>
+                    </div>
+
+                    <div class="bento-card bento-secure">
+                        <div class="bento-header">
+                            <span class="bento-label">Secure</span>
+                            <div class="bento-icon text-success">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                    <polyline points="22 4 12 14.01 9 11.01"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="bento-value text-success" id="dash-secure">0</div>
+                        <div class="bento-sub">High strength rating</div>
+                    </div>
+                </div>
+
+                <!-- Active Filter Alert -->
+                <div id="filter-alert" class="filter-indicator-bar hidden">
+                    <span>Filtering by: <strong id="filter-alert-text">Reused</strong></span>
+                    <button class="btn-clear-filter" onclick="clearDashboardFilters()">Clear Filter</button>
+                </div>
+
+                <!-- CONTROLS & SEARCH -->
+                <div class="controls-panel">
+                    <div class="search-box-outer">
+                        <div class="search-box-inner">
+                            <svg class="search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="11" cy="11" r="8"/>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            </svg>
+                            <input type="text" id="search-input" placeholder="Search service, username, notes..." oninput="renderVault()">
+                        </div>
+                    </div>
+                    
+                    <div class="select-wrapper-outer">
+                        <div class="select-wrapper-inner">
+                            <select id="filter-category" onchange="renderVault()">
+                                <option value="All">All Categories</option>
+                                <option value="General">General</option>
+                                <option value="Work">Work</option>
+                                <option value="Social">Social</option>
+                                <option value="Banking">Banking</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="add-entry-row">
+                    <button class="btn-primary" onclick="showAddModal()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        <span>Add New Entry</span>
+                    </button>
+                </div>
+
+                <!-- VAULT ENTRIES LIST -->
+                <div id="vault-list" class="vault-list">
+                    <!-- Vault items will render here dynamically -->
+                </div>
+            </div>
+
+            <!-- 2. GENERATOR VIEW -->
+            <div id="tab-generator" class="tab-pane">
+                <div class="generator-container-outer">
+                    <div class="generator-container-inner">
+                        <div class="generated-display-panel">
+                            <div class="result-box" id="gen-result">••••••••••••••••</div>
+                            <div class="display-actions">
+                                <button type="button" class="btn-icon-action" onclick="copyGeneratedPassword()" title="Copy Generated Password">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="btn-icon-action" onclick="generatePassword()" title="Generate New">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Entropy / Strength indicator -->
+                        <div class="generator-strength-bar">
+                            <div id="gen-strength-fill" class="strength-bar-fill strength-none"></div>
+                        </div>
+                        <div class="strength-label-text">
+                            Strength: <span id="gen-strength-label">None</span>
+                        </div>
+
+                        <div class="generator-options">
+                            <div class="option-slider-row">
+                                <div class="option-label-info">
+                                    <span>Password Length</span>
+                                    <strong id="len-val">16</strong>
+                                </div>
+                                <input type="range" id="gen-length" min="8" max="64" value="16" oninput="document.getElementById('len-val').innerText = this.value; generatePassword();">
+                            </div>
+
+                            <div class="option-grid">
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="gen-upper" checked onchange="generatePassword()">
+                                    <span class="custom-checkmark"></span>
+                                    <span>Uppercase (A-Z)</span>
+                                </label>
+
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="gen-lower" checked onchange="generatePassword()">
+                                    <span class="custom-checkmark"></span>
+                                    <span>Lowercase (a-z)</span>
+                                </label>
+
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="gen-numbers" checked onchange="generatePassword()">
+                                    <span class="custom-checkmark"></span>
+                                    <span>Numbers (0-9)</span>
+                                </label>
+
+                                <label class="checkbox-option">
+                                    <input type="checkbox" id="gen-symbols" checked onchange="generatePassword()">
+                                    <span class="custom-checkmark"></span>
+                                    <span>Special Symbols (!@#$)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. SETTINGS VIEW -->
+            <div id="tab-settings" class="tab-pane">
+                <div class="settings-sections">
+                    <!-- Session & Security -->
+                    <div class="settings-card-outer">
+                        <div class="settings-card-inner">
+                            <h3>Security & Lock Settings</h3>
+                            <p class="settings-desc">Manage your auto-lock trigger and local variables.</p>
+                            
+                            <div class="settings-row">
+                                <div class="settings-col">
+                                    <label for="setting-timeout">Auto-Lock Idle Timeout (Minutes)</label>
+                                    <input type="number" id="setting-timeout" value="5" min="1" max="60" onchange="updateTimeout()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Data -->
+                    <div class="settings-card-outer">
+                        <div class="settings-card-inner">
+                            <h3>Import Records</h3>
+                            <p class="settings-desc">Import CSV or JSON files from Bitwarden, LastPass, or generic structures.</p>
+                            
+                            <div class="settings-action-box">
+                                <button class="btn-secondary" onclick="document.getElementById('import-input').click()">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <polyline points="16 16 12 12 8 16"/>
+                                        <line x1="12" y1="12" x2="12" y2="21"/>
+                                        <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                                        <polyline points="16 16 12 12 8 16"/>
+                                    </svg>
+                                    <span>Upload JSON or CSV</span>
+                                </button>
+                                <input type="file" id="import-input" class="hidden" accept=".csv,.json" onchange="handleUniversalImport(event)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Export Data -->
+                    <div class="settings-card-outer">
+                        <div class="settings-card-inner">
+                            <h3>Export Records (Unencrypted)</h3>
+                            <p class="settings-desc text-danger">⚠️ WARNING: Exported files are not encrypted. Keep them safe!</p>
+                            
+                            <div class="btn-group-horizontal">
+                                <button class="btn-secondary" onclick="exportToJson()">
+                                    Export JSON
+                                </button>
+                                <button class="btn-secondary" onclick="exportToCsv()">
+                                    Export CSV
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Factory Reset / Data Clear -->
+                    <div class="settings-card-outer">
+                        <div class="settings-card-inner border-danger-dim">
+                            <h3 class="text-danger">Wipe Session Data</h3>
+                            <p class="settings-desc">Clear the active volatile memory database and return to lock screen. Ensure you've downloaded/saved your file!</p>
+                            
+                            <button class="btn-danger" onclick="confirmWipeSession()">
+                                Clear Vault Session
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<!-- ADD/EDIT DIALOG MODAL -->
+<div id="modal" class="modal-backdrop">
+    <div class="modal-container-outer">
+        <div class="modal-container-inner">
+            <h2 id="modal-title">Add Entry</h2>
+            
+            <div class="modal-form">
+                <div class="input-row-grid">
+                    <div class="modal-input-field">
+                        <label for="entry-category">Category</label>
+                        <select id="entry-category">
+                            <option value="General">General</option>
+                            <option value="Work">Work</option>
+                            <option value="Social">Social</option>
+                            <option value="Banking">Banking</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-input-field">
+                        <label for="entry-service">Service Name / Website</label>
+                        <input type="text" id="entry-service" placeholder="e.g. Google, Amazon...">
+                    </div>
+                </div>
+
+                <div class="modal-input-field">
+                    <label for="entry-user">Username / Email</label>
+                    <input type="text" id="entry-user" placeholder="e.g. email@domain.com">
+                </div>
+
+                <div class="modal-input-field">
+                    <label for="entry-pass">Password</label>
+                    <div class="input-action-inline">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="entry-pass" oninput="analyzeEntryPasswordStrength(this.value)">
+                            <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('entry-pass')">
+                                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                        <button type="button" class="btn-dice" onclick="fillGeneratedPass()" title="Generate Random Password">🎲</button>
+                    </div>
+                    <!-- Strength bar inside modal -->
+                    <div class="modal-strength-container">
+                        <div id="modal-strength-fill" class="strength-bar-fill strength-none"></div>
+                    </div>
+                    <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
+                </div>
+
+                <div class="modal-input-field">
+                    <label for="entry-notes">Notes (Optional)</label>
+                    <textarea id="entry-notes" rows="3" placeholder="API keys, secret questions, URLs..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveEntry()">Save Entry</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST ALERT -->
+<div id="toast" class="toast-box">
+    <div class="toast-content">
+        <span class="toast-message" id="toast-message">Message text</span>
+        <div id="toast-countdown-ring" class="toast-timer"></div>
+    </div>
+</div>
+
+<!-- Load application JavaScript (inlined during build) -->
+<script src="app.js"></script>
+</body>
+</html>

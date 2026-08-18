@@ -1,0 +1,21 @@
+{
+  "name": "securevault",
+  "version": "2.0.0",
+  "description": "Secure, offline-first, single-file portable password manager with premium UI/UX",
+  "type": "module",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test tests/crypto.test.js",
+    "dev": "node build.js --watch"
+  },
+  "keywords": [
+    "password-manager",
+    "offline-first",
+    "portable",
+    "security",
+    "aes-gcm",
+    "crypto"
+  ],
+  "author": "",
+  "license": "MIT"
+}

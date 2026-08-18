@@ -1,0 +1,1371 @@
+/* ==========================================================================
+   🛡️ SecureVault Design System & Premium UI Stylesheet
+   Theme: Ethereal Glass / OLED Vantablack with Cyber-Teal accents
+   ========================================================================== */
+
+:root {
+    /* Color Palette */
+    --bg-dark: #030508;
+    --bg-surface: rgba(10, 14, 23, 0.65);
+    --bg-inner: rgba(5, 7, 12, 0.8);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-color-hover: rgba(255, 255, 255, 0.15);
+    
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --text-muted: #6b7280;
+    
+    --accent-primary: #06b6d4;      /* Cyber Teal */
+    --accent-secondary: #3b82f6;    /* Cobalt Blue */
+    --accent-gradient: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+    
+    --danger: #ef4444;
+    --danger-dim: rgba(239, 68, 68, 0.15);
+    --warning: #f59e0b;
+    --warning-dim: rgba(245, 158, 11, 0.15);
+    --success: #10b981;
+    --success-dim: rgba(16, 185, 129, 0.15);
+    
+    /* Font Pairings */
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    
+    /* Animation Physics */
+    --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+    --transition-speed: 0.4s;
+}
+
+/* Light Mode Overrides */
+body.light-mode {
+    --bg-dark: #f8fafc;
+    --bg-surface: rgba(255, 255, 255, 0.7);
+    --bg-inner: rgba(241, 245, 249, 0.85);
+    --border-color: rgba(15, 23, 42, 0.08);
+    --border-color-hover: rgba(15, 23, 42, 0.15);
+    
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    
+    --accent-primary: #0891b2;
+    --accent-secondary: #2563eb;
+    --accent-gradient: linear-gradient(135deg, #0891b2 0%, #2563eb 100%);
+    
+    --danger: #dc2626;
+    --danger-dim: rgba(220, 38, 38, 0.1);
+    --warning: #d97706;
+    --warning-dim: rgba(217, 119, 6, 0.1);
+    --success: #059669;
+    --success-dim: rgba(5, 150, 105, 0.1);
+}
+
+/* ==========================================================================
+   Base resets & typography
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+/* Ambient Background Orbs */
+.glow-orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.15;
+    transition: opacity 1s var(--ease-spring);
+}
+
+.glow-orb-1 {
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, var(--accent-primary) 0%, transparent 70%);
+    top: -100px;
+    left: -100px;
+}
+
+.glow-orb-2 {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, var(--accent-secondary) 0%, transparent 70%);
+    bottom: -150px;
+    right: -150px;
+}
+
+body.light-mode .glow-orb {
+    opacity: 0.08;
+}
+
+/* ==========================================================================
+   Layout Containers
+   ========================================================================== */
+.app-wrapper {
+    width: 100%;
+    max-width: 680px;
+    z-index: 10;
+    position: relative;
+}
+
+/* Base card styling (Double-Bezel Nested Architecture) */
+.lock-card-outer, .settings-card-outer, .modal-container-outer {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-radius: 28px;
+    padding: 8px;
+    transition: transform var(--transition-speed) var(--ease-spring), 
+                box-shadow var(--transition-speed) var(--ease-spring),
+                border-color var(--transition-speed);
+}
+
+.lock-card-inner, .settings-card-inner, .modal-container-inner {
+    background: var(--bg-inner);
+    border: 1px solid rgba(255, 255, 255, 0.02);
+    border-radius: 22px;
+    padding: 32px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ==========================================================================
+   Lock & Unlock Screen
+   ========================================================================== */
+.lock-container {
+    animation: lockReveal 0.8s var(--ease-spring) forwards;
+}
+
+.brand-header {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.shield-logo {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: rgba(6, 182, 212, 0.08);
+    color: var(--accent-primary);
+    margin-bottom: 16px;
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.brand-header h1 {
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+}
+
+.eyebrow-tag {
+    display: inline-block;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 10px;
+    border-radius: 100px;
+    font-weight: 600;
+}
+
+.flow-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+/* ==========================================================================
+   Inputs & Controls System
+   ========================================================================== */
+.input-group-outer {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 3px;
+    margin-bottom: 20px;
+    transition: border-color var(--transition-speed) var(--ease-spring);
+}
+
+.input-group-outer:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 1px var(--accent-primary);
+}
+
+.input-group-inner {
+    border-radius: 13px;
+    padding: 10px 14px;
+}
+
+.input-group-inner label {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.password-field-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+input[type="password"],
+input[type="text"],
+input[type="number"],
+select,
+textarea {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+input[type="password"],
+.vault-item-pass-hidden {
+    font-family: var(--font-mono);
+    letter-spacing: 0.15em;
+}
+
+.password-field-wrapper input {
+    flex-grow: 1;
+}
+
+.btn-toggle-visibility, .btn-dice, .btn-icon-action {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    transition: color 0.2s, transform 0.2s;
+}
+
+.btn-toggle-visibility:hover, .btn-dice:hover, .btn-icon-action:hover {
+    color: var(--accent-primary);
+}
+
+.btn-dice {
+    font-size: 1.25rem;
+    padding: 8px;
+}
+
+/* Buttons */
+button {
+    font-family: var(--font-sans);
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--accent-gradient);
+    border: none;
+    border-radius: 14px;
+    color: #ffffff;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-shadow: 0 10px 20px -10px rgba(6, 182, 212, 0.4);
+    transition: transform 0.2s var(--ease-spring), opacity 0.2s, box-shadow 0.2s;
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px -8px rgba(6, 182, 212, 0.5);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-icon-circle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    transition: transform 0.2s var(--ease-spring);
+}
+
+.btn-primary:hover .btn-icon-circle {
+    transform: translateX(2px);
+}
+
+.btn-secondary {
+    width: 100%;
+    padding: 14px 24px;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-color-hover);
+}
+
+.btn-danger {
+    width: 100%;
+    padding: 14px 24px;
+    background: var(--danger-dim);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 14px;
+    color: var(--danger);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: var(--danger);
+}
+
+.btn-group-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.btn-group-horizontal {
+    display: flex;
+    gap: 12px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ==========================================================================
+   Main Application UI
+   ========================================================================== */
+.app-container {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    min-height: 620px;
+    max-height: 90vh;
+    animation: appReveal 0.8s var(--ease-spring) forwards;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Auto-lock timer visual bar */
+.auto-lock-progressbar-container {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.03);
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 100;
+}
+
+.auto-lock-progressbar-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--accent-gradient);
+    transform-origin: left;
+    transition: transform 1s linear;
+}
+
+.app-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(4, 6, 12, 0.3);
+}
+
+.header-left, .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.theme-toggle {
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    transition: color 0.2s;
+}
+
+.theme-toggle:hover {
+    color: var(--accent-primary);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    padding: 6px 12px;
+    border-radius: 100px;
+    border: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.status-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-indicator-dot.online {
+    background-color: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.offline-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--success);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--success-dim);
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.action-link {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 10px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.action-link:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--border-color-hover);
+}
+
+.btn-header {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.btn-header:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.btn-save {
+    background: var(--accent-gradient);
+    border: none;
+    color: #ffffff;
+}
+
+.btn-save:hover {
+    opacity: 0.9;
+}
+
+.btn-lock {
+    background: var(--danger-dim);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--danger);
+}
+
+.btn-lock:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: var(--danger);
+}
+
+/* Navigation Tabs */
+.app-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    background: rgba(4, 6, 12, 0.15);
+}
+
+.tab {
+    flex: 1;
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-bottom: 2px solid transparent;
+    transition: color 0.3s, border-color 0.3s, background-color 0.3s;
+}
+
+.tab:hover {
+    color: var(--text-primary);
+    background-color: rgba(255, 255, 255, 0.01);
+}
+
+.tab.active {
+    color: var(--accent-primary);
+    border-bottom-color: var(--accent-primary);
+    background-color: rgba(6, 182, 212, 0.03);
+}
+
+.app-content {
+    padding: 24px;
+    flex-grow: 1;
+    overflow-y: auto;
+    background: rgba(4, 6, 12, 0.1);
+}
+
+.tab-pane {
+    display: none;
+    animation: fadeIn 0.4s var(--ease-spring) forwards;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* ==========================================================================
+   Bento Grid Dashboard
+   ========================================================================== */
+.dashboard-bento {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+
+.bento-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 16px;
+    transition: transform 0.3s var(--ease-spring), border-color 0.3s, box-shadow 0.3s;
+}
+
+.bento-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--border-color-hover);
+    box-shadow: 0 8px 24px -10px rgba(0, 0, 0, 0.3);
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.bento-card.bento-weak:hover {
+    border-color: rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.02);
+}
+
+.bento-card.bento-reused:hover {
+    border-color: rgba(245, 158, 11, 0.4);
+    background: rgba(245, 158, 11, 0.02);
+}
+
+.bento-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.bento-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.bento-icon {
+    display: flex;
+    color: var(--text-secondary);
+}
+
+.bento-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.bento-sub {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.text-danger { color: var(--danger); }
+.text-warning { color: var(--warning); }
+.text-success { color: var(--success); }
+
+.filter-indicator-bar {
+    background: var(--bg-inner);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 10px 16px;
+    margin-bottom: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    animation: slideDown 0.3s var(--ease-spring);
+}
+
+.btn-clear-filter {
+    background: none;
+    border: none;
+    color: var(--accent-primary);
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.btn-clear-filter:hover {
+    text-decoration: underline;
+}
+
+/* ==========================================================================
+   Search Panel & Controls
+   ========================================================================== */
+.controls-panel {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.search-box-outer {
+    flex: 2;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2px;
+    transition: border-color var(--transition-speed);
+}
+
+.search-box-outer:focus-within {
+    border-color: var(--accent-primary);
+}
+
+.search-box-inner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+}
+
+.search-icon {
+    color: var(--text-muted);
+}
+
+.select-wrapper-outer {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2px;
+}
+
+.select-wrapper-inner {
+    padding: 8px 12px;
+}
+
+.select-wrapper-inner select {
+    cursor: pointer;
+    font-weight: 500;
+}
+
+.add-entry-row {
+    margin-bottom: 20px;
+}
+
+/* ==========================================================================
+   Vault Credentials List
+   ========================================================================== */
+.vault-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.vault-item-outer {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 2px;
+    transition: border-color 0.25s, transform 0.25s var(--ease-spring);
+    animation: fadeInUp 0.4s var(--ease-spring) both;
+}
+
+.vault-item-outer:hover {
+    border-color: var(--border-color-hover);
+    transform: translateY(-1px);
+}
+
+.vault-item-inner {
+    background: var(--bg-inner);
+    border-radius: 15px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.item-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.item-title-row h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.badge-tag {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-secondary);
+    border-radius: 4px;
+}
+
+.item-user-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.item-security-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.strength-indicator-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.strength-text-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-action-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.btn-action-icon:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--text-primary);
+    border-color: var(--border-color-hover);
+}
+
+.btn-action-icon.btn-delete:hover {
+    background: var(--danger-dim);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+/* ==========================================================================
+   Password Generator View
+   ========================================================================== */
+.generator-container-outer {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 3px;
+}
+
+.generator-container-inner {
+    border-radius: 17px;
+    padding: 24px;
+}
+
+.generated-display-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.result-box {
+    font-family: var(--font-mono);
+    font-size: 1.3rem;
+    word-break: break-all;
+    user-select: all;
+    color: var(--accent-primary);
+    font-weight: 500;
+}
+
+.display-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.generator-strength-bar {
+    width: 100%;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    overflow: hidden;
+}
+
+.strength-bar-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 10px;
+    transition: width 0.3s var(--ease-spring), background-color 0.3s;
+}
+
+.strength-none { background-color: var(--text-muted); width: 5%; }
+.strength-weak { background-color: var(--danger); width: 25%; }
+.strength-medium { background-color: var(--warning); width: 60%; }
+.strength-strong { background-color: var(--success); width: 100%; }
+
+.strength-label-text, .strength-tiny-text {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+}
+
+.option-slider-row {
+    margin-bottom: 24px;
+}
+
+.option-label-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+}
+
+input[type="range"] {
+    width: 100%;
+    -webkit-appearance: none;
+    background: rgba(255, 255, 255, 0.08);
+    height: 6px;
+    border-radius: 5px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    cursor: pointer;
+    border: 2px solid var(--bg-dark);
+    transition: transform 0.15s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+
+.option-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+}
+
+/* Custom Checkbox options */
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    user-select: none;
+    position: relative;
+}
+
+.checkbox-option input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+.custom-checkmark {
+    position: relative;
+    height: 20px;
+    width: 20px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.checkbox-option:hover input ~ .custom-checkmark {
+    border-color: var(--border-color-hover);
+}
+
+.checkbox-option input:checked ~ .custom-checkmark {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+}
+
+.custom-checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+.checkbox-option input:checked ~ .custom-checkmark:after {
+    display: block;
+}
+
+.checkbox-option .custom-checkmark:after {
+    left: 6px;
+    top: 2px;
+    width: 5px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+
+/* ==========================================================================
+   Settings Interface
+   ========================================================================== */
+.settings-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.settings-card-inner h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.settings-desc {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 18px;
+}
+
+.settings-row {
+    display: flex;
+    gap: 16px;
+}
+
+.settings-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-col label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+}
+
+.settings-col input {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.settings-col input:focus {
+    border-color: var(--accent-primary);
+}
+
+.settings-action-box {
+    background: rgba(255, 255, 255, 0.01);
+    border: 1px dashed var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+}
+
+.border-danger-dim {
+    border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* ==========================================================================
+   Modals & Toast Dialogs
+   ========================================================================== */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.modal-container-outer {
+    width: 100%;
+    max-width: 500px;
+    transform: scale(0.95);
+    opacity: 0;
+    transition: transform 0.4s var(--ease-spring), opacity 0.4s var(--ease-spring);
+}
+
+.modal-backdrop.active {
+    display: flex;
+}
+
+.modal-backdrop.active .modal-container-outer {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.modal-container-inner h2 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 20px;
+}
+
+.modal-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.input-row-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 12px;
+}
+
+.modal-input-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.modal-input-field label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.modal-input-field input,
+.modal-input-field select,
+.modal-input-field textarea {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.modal-input-field input:focus,
+.modal-input-field select:focus,
+.modal-input-field textarea:focus {
+    border-color: var(--accent-primary);
+}
+
+.input-action-inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.input-action-inline .password-field-wrapper {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2px 14px 2px 2px;
+}
+
+.input-action-inline .password-field-wrapper input {
+    padding: 10px 0 10px 12px;
+}
+
+.modal-strength-container {
+    width: 100%;
+    height: 3px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin-top: 6px;
+    overflow: hidden;
+}
+
+.strength-tiny-text {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.modal-footer button {
+    width: auto;
+}
+
+/* Toast styling */
+.toast-box {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translate(-50%, 20px);
+    background: rgba(10, 14, 23, 0.9);
+    border: 1px solid var(--accent-primary);
+    box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.3);
+    backdrop-filter: blur(12px);
+    padding: 12px 24px;
+    border-radius: 50px;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 2000;
+    transition: opacity 0.3s, transform 0.3s var(--ease-spring);
+}
+
+.toast-box.active {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.toast-message {
+    font-size: 0.85rem;
+    font-weight: 550;
+    color: var(--text-primary);
+}
+
+.toast-timer {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(6, 182, 212, 0.2);
+    border-top-color: var(--accent-primary);
+    animation: spin 1s linear infinite;
+}
+
+/* ==========================================================================
+   Animations & Transitions
+   ========================================================================== */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lockReveal {
+    from { opacity: 0; transform: translateY(24px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes appReveal {
+    from { opacity: 0; transform: translateY(32px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Scrollbar styling
+   ========================================================================== */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================================================
+   Mobile Responsive Adjustments
+   ========================================================================== */
+@media (max-width: 768px) {
+    body {
+        padding: 12px;
+    }
+    
+    .lock-card-inner, .settings-card-inner, .modal-container-inner {
+        padding: 24px 16px;
+    }
+    
+    .app-header {
+        padding: 16px;
+        flex-direction: column;
+        gap: 12px;
+        align-items: stretch;
+    }
+    
+    .header-right {
+        justify-content: space-between;
+    }
+    
+    .dashboard-bento {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .controls-panel {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .option-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+}

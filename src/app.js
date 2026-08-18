@@ -168,6 +168,8 @@ function getReusedPasswordSet() {
 
 // --- Vault Initialization & State Control ---
 
+// --- Vault Initialization & State Control ---
+
 /**
  * Switches the lock screen view to prompt for Master Password unlock.
  */
@@ -179,10 +181,62 @@ function showUnlockPrompt() {
 }
 
 /**
+ * Switches the lock screen view to prompt for new vault creation.
+ */
+function showInitPrompt() {
+    const initPrompt = document.getElementById('initialize-prompt');
+    const unlockPrompt = document.getElementById('unlock-prompt');
+    if (initPrompt) initPrompt.classList.remove('hidden');
+    if (unlockPrompt) unlockPrompt.classList.add('hidden');
+}
+
+/**
+ * Persists current encrypted vault state in browser local storage.
+ */
+async function persistEncryptedVault() {
+    if (!masterKey || !salt) return;
+    try {
+        const encrypted = await encrypt(vaultData, masterKey);
+        const payload = {
+            salt: uint8ToBase64(salt),
+            iv: encrypted.iv,
+            data: encrypted.data
+        };
+        localStorage.setItem('securevault_encrypted_payload', JSON.stringify(payload));
+    } catch (e) {
+        console.error("Failed to persist encrypted vault locally", e);
+    }
+}
+
+/**
+ * Checks for previously saved encrypted vault in browser local storage.
+ */
+function checkSavedVault() {
+    if (typeof localStorage === 'undefined') return false;
+    const saved = localStorage.getItem('securevault_encrypted_payload');
+    if (saved) {
+        try {
+            const content = JSON.parse(saved);
+            if (content.salt && content.iv && content.data) {
+                salt = base64ToUint8(content.salt);
+                pendingData = { iv: content.iv, data: content.data };
+                showUnlockPrompt();
+                return true;
+            }
+        } catch (e) {
+            localStorage.removeItem('securevault_encrypted_payload');
+        }
+    }
+    showInitPrompt();
+    return false;
+}
+
+/**
  * Initializes a brand new vault in memory.
  */
 async function initializeVault() {
-    const pw = document.getElementById('new-master-pw').value;
+    const pwInput = document.getElementById('new-master-pw');
+    const pw = pwInput ? pwInput.value : '';
     if (pw.length < 8) {
         return alert("Master password must be at least 8 characters.");
     }
@@ -190,6 +244,7 @@ async function initializeVault() {
     salt = crypto.getRandomValues(new Uint8Array(16));
     masterKey = await deriveKey(pw, salt);
     vaultData = [];
+    await persistEncryptedVault();
     showApp();
     showToast("Vault initialized successfully.");
 }
@@ -198,7 +253,8 @@ async function initializeVault() {
  * Unlocks vault by decrypting loaded data.
  */
 async function unlockVault() {
-    const pw = document.getElementById('master-pw').value;
+    const pwInput = document.getElementById('master-pw');
+    const pw = pwInput ? pwInput.value : '';
     if (!pw) return;
     if (!salt) return alert("Please upload or import a vault file first.");
     
@@ -208,6 +264,7 @@ async function unlockVault() {
             vaultData = await decrypt(pendingData.data, pendingData.iv, masterKey);
             pendingData = null;
         }
+        await persistEncryptedVault();
         showApp();
         showToast("Vault unlocked.");
     } catch (e) {
@@ -241,6 +298,8 @@ function lockVault() {
     
     const progressBar = document.getElementById('auto-lock-progressbar');
     if (progressBar) progressBar.style.transform = 'scaleX(0)';
+
+    checkSavedVault();
 }
 
 /**
@@ -697,7 +756,7 @@ function analyzeEntryPasswordStrength(password) {
 /**
  * Handles saving password record.
  */
-function saveEntry() {
+async function saveEntry() {
     const category = document.getElementById('entry-category').value;
     const service = document.getElementById('entry-service').value.trim();
     const user = document.getElementById('entry-user').value.trim();
@@ -740,14 +799,16 @@ function saveEntry() {
     renderDashboard();
     renderVault();
     resetAutoLock();
+    await persistEncryptedVault();
 }
 
-function deleteEntry(id) {
+async function deleteEntry(id) {
     if (confirm("Are you sure you want to delete this credential?")) {
         vaultData = vaultData.filter(i => i.id !== id);
         renderDashboard();
         renderVault();
         resetAutoLock();
+        await persistEncryptedVault();
         showToast("Entry deleted.");
     }
 }
@@ -1378,6 +1439,7 @@ if (typeof window !== 'undefined') {
             document.body.classList.add('light-mode');
         }
         updateOnlineStatus();
+        checkSavedVault();
     };
 }
 

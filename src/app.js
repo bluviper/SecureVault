@@ -520,7 +520,7 @@ function renderVault() {
 
     if (filtered.length === 0) {
         list.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: var(--text-muted);">
+            <div class="empty-state">
                 <p>No credentials found matching filters.</p>
             </div>
         `;
@@ -555,6 +555,14 @@ function renderVault() {
         userP.className = 'item-user-text';
         userP.innerText = item.user || 'No username';
 
+        // Revealable password cell (mono credential value, hidden by default)
+        const passRow = document.createElement('div');
+        passRow.className = 'item-pass-row hidden';
+        const passText = document.createElement('span');
+        passText.className = 'credential-value';
+        passText.innerText = item.pass;
+        passRow.appendChild(passText);
+
         // Render tags if present
         if (item.tags && item.tags.length > 0) {
             const tagsContainer = document.createElement('div');
@@ -585,23 +593,31 @@ function renderVault() {
         
         if (item.pass && reusedSet.has(item.pass)) {
             const reuseLabel = document.createElement('span');
-            reuseLabel.className = 'strength-text-label text-warning';
+            reuseLabel.className = 'strength-text-label strength-reuse';
             reuseLabel.innerText = '• Reused';
-            reuseLabel.style.marginLeft = '8px';
             secRow.appendChild(reuseLabel);
         }
         
         info.appendChild(titleRow);
         info.appendChild(userP);
+        info.appendChild(passRow);
         info.appendChild(secRow);
         
         // Actions
         const actions = document.createElement('div');
         actions.className = 'item-actions';
         
+        const revealBtn = document.createElement('button');
+        revealBtn.className = 'btn-action-icon btn-reveal';
+        revealBtn.title = 'Reveal Password';
+        revealBtn.setAttribute('aria-label', 'Reveal Password');
+        revealBtn.onclick = () => toggleEntryReveal(passRow, revealBtn);
+        revealBtn.innerHTML = EYE_OPEN_SVG;
+        
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn-action-icon';
         copyBtn.title = 'Copy Password';
+        copyBtn.setAttribute('aria-label', 'Copy Password');
         copyBtn.onclick = () => copyCredentialPassword(item.pass);
         copyBtn.innerHTML = `
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -613,6 +629,7 @@ function renderVault() {
         const editBtn = document.createElement('button');
         editBtn.className = 'btn-action-icon';
         editBtn.title = 'Edit';
+        editBtn.setAttribute('aria-label', 'Edit Entry');
         editBtn.onclick = () => showEditModal(item.id);
         editBtn.innerHTML = `
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -624,6 +641,7 @@ function renderVault() {
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn-action-icon btn-delete';
         deleteBtn.title = 'Delete';
+        deleteBtn.setAttribute('aria-label', 'Delete Entry');
         deleteBtn.onclick = () => deleteEntry(item.id);
         deleteBtn.innerHTML = `
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -632,6 +650,7 @@ function renderVault() {
             </svg>
         `;
         
+        actions.appendChild(revealBtn);
         actions.appendChild(copyBtn);
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
@@ -1311,6 +1330,20 @@ function updateOnlineStatus() {
     badge.title = online ? 'Offline secure environment' : 'No network connection active (Maximum Security)';
 }
 
+// Shared visibility-toggle icons (open eye / slashed eye)
+const EYE_OPEN_SVG = `
+    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+        <circle cx="12" cy="12" r="3"/>
+    </svg>
+`;
+const EYE_CLOSED_SVG = `
+    <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+        <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+`;
+
 /**
  * Handles password input visibility toggle (eye SVG switch).
  */
@@ -1318,37 +1351,40 @@ function togglePasswordInput(fieldId) {
     const input = document.getElementById(fieldId);
     if (!input) return;
     const button = input.nextElementSibling;
-    
+
     if (input.type === 'password') {
         input.type = 'text';
-        if (button) {
-            button.innerHTML = `
-                <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line x1="1" y1="1" x2="23" y2="23"/>
-                </svg>
-            `;
-        }
+        if (button) button.innerHTML = EYE_CLOSED_SVG;
     } else {
         input.type = 'password';
-        if (button) {
-            button.innerHTML = `
-                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>
-            `;
-        }
+        if (button) button.innerHTML = EYE_OPEN_SVG;
     }
 }
 
 /**
- * Theme toggle handler (light mode/dark mode).
+ * Reveals / hides a credential's password inline within its vault ledger row.
+ */
+function toggleEntryReveal(passRow, btn) {
+    if (!passRow) return;
+    const isHidden = passRow.classList.contains('hidden');
+
+    passRow.classList.toggle('hidden', !isHidden);
+    btn.innerHTML = isHidden ? EYE_CLOSED_SVG : EYE_OPEN_SVG;
+    btn.title = isHidden ? 'Hide Password' : 'Reveal Password';
+    btn.setAttribute('aria-label', btn.title);
+    resetAutoLock();
+}
+
+/**
+ * Theme toggle handler ("Warm Editorial" light / "Midnight Executive" dark).
  */
 function toggleTheme() {
-    document.body.classList.toggle('light-mode');
-    const isLight = document.body.classList.contains('light-mode');
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    const root = document.documentElement;
+    const next = root.getAttribute('data-theme') === 'editorial-light'
+        ? 'executive-dark'
+        : 'editorial-light';
+    root.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
 }
 
 /**
@@ -1409,8 +1445,11 @@ if (typeof window !== 'undefined') {
     window.addEventListener('offline', updateOnlineStatus);
 
     window.onload = () => {
-        if (localStorage.getItem('theme') === 'light') {
-            document.body.classList.add('light-mode');
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'editorial-light') {
+            document.documentElement.setAttribute('data-theme', 'editorial-light');
+        } else if (saved === 'dark' || saved === 'executive-dark') {
+            document.documentElement.setAttribute('data-theme', 'executive-dark');
         }
         updateOnlineStatus();
         checkSavedVault();

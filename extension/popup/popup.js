@@ -129,8 +129,8 @@ async function handleFileLoad(event) {
 }
 
 async function handleGitHubPullPrompt() {
-    const token = prompt("Enter your GitHub Access Token:");
-    if (!token) return;
+    // Token is optional: public repos are readable without auth via the REST API.
+    const token = prompt("Enter your GitHub Access Token (optional for public repos):") || "";
     const owner = prompt("Enter Repository Owner (default: bluviper):", "bluviper") || "bluviper";
     const repo = prompt("Enter Repository Name (default: SecureVault):", "SecureVault") || "SecureVault";
     
@@ -141,14 +141,17 @@ async function handleGitHubPullPrompt() {
 
     try {
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/my_passwords.vault`;
-        const res = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/vnd.github.v3+json'
-            }
-        });
+        const headers = {
+            'Accept': 'application/vnd.github.v3+json'
+        };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
 
-        if (!res.ok) throw new Error("GitHub file fetch failed");
+        const res = await fetch(url, { headers });
+
+        if (res.status === 401 || res.status === 403) {
+            throw new Error("Auth required — this repo is private or the token is invalid. Add a GitHub token with repo read scope.");
+        }
+        if (!res.ok) throw new Error("GitHub file fetch failed (" + res.status + ")");
         
         const data = await res.json();
         const cleanBase64 = data.content.replace(/\s/g, '');

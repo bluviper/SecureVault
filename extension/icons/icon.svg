@@ -1,6 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-    <rect width="24" height="24" fill="#04060a" rx="5"/>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <path d="M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
-    <path d="M12 11v6"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+        <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0a0f1d"/>
+            <stop offset="100%" stop-color="#030508"/>
+        </linearGradient>
+        <linearGradient id="neonCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#06b6d4"/>
+            <stop offset="100%" stop-color="#3b82f6"/>
+        </linearGradient>
+    </defs>
+    <rect width="128" height="128" rx="28" fill="url(#bgGrad)" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
+    <!-- Outer Shield Frame -->
+    <path d="M64 18 L104 34 V68 C104 92 64 110 64 110 C64 110 24 92 24 68 V34 Z" fill="none" stroke="url(#neonCyan)" stroke-width="7" stroke-linejoin="round"/>
+    <!-- Inner Keyhole -->
+    <circle cx="64" cy="54" r="12" fill="url(#neonCyan)"/>
+    <path d="M57 58 L52 82 H76 L71 58 Z" fill="url(#neonCyan)"/>
 </svg>

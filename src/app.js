@@ -3,20 +3,21 @@
    ========================================================================== */
 
 // --- Application State ---
-let masterKey = null;         // Decrypted crypto key object
-let vaultData = [];          // List of credentials
-let currentEditId = null;     // ID of item being edited, if any
-let salt = null;              // PBKDF2 derivation salt (Uint8Array)
-let timeoutMinutes = 5;       // Auto-lock idle timer (minutes)
-let clipboardClearTimer = null; // Clipboard auto-clear timeout reference
-let pendingData = null;       // Encrypted payload awaiting unlock
-let activeDashboardFilter = null; // 'weak', 'reused', or null
+let masterKey = null;             // Decrypted CryptoKey object
+let vaultData = [];              // Array of saved credential items
+let currentEditId = null;         // ID of the item being edited in modal
+let salt = null;                  // PBKDF2 salt (Uint8Array)
+let timeoutMinutes = 5;           // Inactivity auto-lock timeout (minutes)
+let clipboardClearTimer = null;   // Reference for clipboard auto-wipe timer
+let toastHideTimeout = null;      // Reference for UI toast notification hide timer
+let pendingData = null;           // Staged encrypted payload awaiting master password unlock
+let activeDashboardFilter = null; // 'weak', 'reused', 'vulnerable', or null
 
-// Auto-lock tracking
+// Auto-lock activity tracking
 let lastActivityTime = Date.now();
 let autoLockInterval = null;
 
-// --- Cryptographic Utility Functions ---
+// --- Cryptographic & Utility Functions ---
 
 /**
  * Converts a Uint8Array to a Base64 string.
@@ -40,6 +41,19 @@ function base64ToUint8(base64) {
         bytes[i] = binary.charCodeAt(i);
     }
     return bytes;
+}
+
+/**
+ * Safely escapes HTML special characters to prevent XSS attacks.
+ */
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 /**
@@ -111,49 +125,61 @@ function calculateEntropy(password) {
     if (/[a-z]/.test(password)) charsetSize += 26;
     if (/[A-Z]/.test(password)) charsetSize += 26;
     if (/[0-9]/.test(password)) charsetSize += 10;
-    if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32; // Standard special characters
+    if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
     
     if (charsetSize === 0) return 0;
     return Math.round(password.length * Math.log2(charsetSize));
 }
 
 /**
- * Returns strength classification object.
+ * Returns strength classification object mapped to semantic theme tokens (danger, warning, success).
  */
 function assessPasswordStrength(password) {
-    if (!password) return { score: 0, label: 'None', class: 'strength-none' };
-    if (password.length < 8) return { score: 1, label: 'Weak', class: 'strength-weak' };
+    if (!password) return { score: 0, label: 'None', token: 'muted' };
+    if (password.length < 8) return { score: 1, label: 'Weak', token: 'danger' };
     
     const entropy = calculateEntropy(password);
     
     if (entropy < 40 || password.length < 10) {
-        return { score: 1, label: 'Weak', class: 'strength-weak' };
+        return { score: 1, label: 'Weak', token: 'danger' };
     } else if (entropy < 70 || password.length < 14) {
-        return { score: 2, label: 'Medium', class: 'strength-medium' };
+        return { score: 2, label: 'Medium', token: 'warning' };
     } else {
-        return { score: 3, label: 'Strong', class: 'strength-strong' };
+        return { score: 3, label: 'Strong', token: 'success' };
     }
 }
 
 /**
- * Iterates over vault data to find identical passwords reused across records.
+ * Returns a Set of passwords that appear more than once in the active vault.
  */
-function detectPasswordReuse() {
-    const counts = {};
+function getReusedPasswordSet() {
+    const counts = new Map();
     vaultData.forEach(item => {
         if (item.pass) {
-            counts[item.pass] = (counts[item.pass] || 0) + 1;
+            counts.set(item.pass, (counts.get(item.pass) || 0) + 1);
         }
     });
-    vaultData.forEach(item => {
-        item.isReused = item.pass ? counts[item.pass] > 1 : false;
+    const reusedSet = new Set();
+    counts.forEach((count, pass) => {
+        if (count > 1) reusedSet.add(pass);
     });
+    return reusedSet;
 }
 
-// --- Vault Initialization & Control ---
+// --- Vault Initialization & State Control ---
 
 /**
- * Initializes a new vault in memory.
+ * Switches the lock screen view to prompt for Master Password unlock.
+ */
+function showUnlockPrompt() {
+    const initPrompt = document.getElementById('initialize-prompt');
+    const unlockPrompt = document.getElementById('unlock-prompt');
+    if (initPrompt) initPrompt.classList.add('hidden');
+    if (unlockPrompt) unlockPrompt.classList.remove('hidden');
+}
+
+/**
+ * Initializes a brand new vault in memory.
  */
 async function initializeVault() {
     const pw = document.getElementById('new-master-pw').value;
@@ -191,7 +217,7 @@ async function unlockVault() {
 }
 
 /**
- * Locks the vault, wiping keys and memory.
+ * Locks the vault, wiping cryptographic keys and transient data from RAM.
  */
 function lockVault() {
     masterKey = null;
@@ -199,10 +225,15 @@ function lockVault() {
     activeDashboardFilter = null;
     
     // UI resets
-    document.getElementById('app-ui').classList.add('hidden');
-    document.getElementById('lock-screen').classList.remove('hidden');
-    document.getElementById('master-pw').value = '';
-    document.getElementById('new-master-pw').value = '';
+    const appUi = document.getElementById('app-ui');
+    const lockScreen = document.getElementById('lock-screen');
+    if (appUi) appUi.classList.add('hidden');
+    if (lockScreen) lockScreen.classList.remove('hidden');
+    
+    const masterPwInput = document.getElementById('master-pw');
+    const newMasterPwInput = document.getElementById('new-master-pw');
+    if (masterPwInput) masterPwInput.value = '';
+    if (newMasterPwInput) newMasterPwInput.value = '';
     
     // Stop intervals
     clearInterval(autoLockInterval);
@@ -216,9 +247,13 @@ function lockVault() {
  * Shows the unlocked main application interface.
  */
 function showApp() {
-    document.getElementById('lock-screen').classList.add('hidden');
-    document.getElementById('app-ui').classList.remove('hidden');
-    document.getElementById('vault-status-text').innerText = 'Vault Unlocked';
+    const lockScreen = document.getElementById('lock-screen');
+    const appUi = document.getElementById('app-ui');
+    const statusText = document.getElementById('vault-status-text');
+    
+    if (lockScreen) lockScreen.classList.add('hidden');
+    if (appUi) appUi.classList.remove('hidden');
+    if (statusText) statusText.innerText = 'Vault Unlocked';
     
     renderDashboard();
     renderVault();
@@ -284,11 +319,16 @@ function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
     
-    document.getElementById(`tab-btn-${tab}`).classList.add('active');
-    document.getElementById(`tab-${tab}`).classList.add('active');
+    const tabBtn = document.getElementById(`tab-btn-${tab}`);
+    const tabPane = document.getElementById(`tab-${tab}`);
+    if (tabBtn) tabBtn.classList.add('active');
+    if (tabPane) tabPane.classList.add('active');
     
     if (tab === 'generator') {
-        generatePassword();
+        const genResult = document.getElementById('gen-result');
+        if (!genResult || genResult.innerText === "Select options") {
+            generatePassword();
+        }
     }
 }
 
@@ -298,7 +338,7 @@ function switchTab(tab) {
  * Summarizes current vault state metrics for the Bento Grid.
  */
 function renderDashboard() {
-    detectPasswordReuse();
+    const reusedSet = getReusedPasswordSet();
     
     let total = vaultData.length;
     let weak = 0;
@@ -309,13 +349,17 @@ function renderDashboard() {
         const rating = assessPasswordStrength(item.pass);
         if (rating.label === 'Weak') weak++;
         if (item.pass.length < 12) vulnerable++;
-        if (item.isReused) reused++;
+        if (item.pass && reusedSet.has(item.pass)) reused++;
     });
     
-    document.getElementById('dash-total').innerText = total;
-    document.getElementById('dash-weak').innerText = weak;
-    document.getElementById('dash-reused').innerText = reused;
+    const totalEl = document.getElementById('dash-total');
+    const weakEl = document.getElementById('dash-weak');
+    const reusedEl = document.getElementById('dash-reused');
     const vulnEl = document.getElementById('dash-vulnerable');
+
+    if (totalEl) totalEl.innerText = total;
+    if (weakEl) weakEl.innerText = weak;
+    if (reusedEl) reusedEl.innerText = reused;
     if (vulnEl) vulnEl.innerText = vulnerable;
     
     populateCategorySelectors();
@@ -363,6 +407,8 @@ function clearDashboardFilters() {
 function updateFilterBarUI() {
     const bar = document.getElementById('filter-alert');
     const label = document.getElementById('filter-alert-text');
+    if (!bar || !label) return;
+    
     if (activeDashboardFilter) {
         bar.classList.remove('hidden');
         if (activeDashboardFilter === 'weak') label.innerText = 'Weak Passwords';
@@ -380,9 +426,15 @@ function updateFilterBarUI() {
  */
 function renderVault() {
     const list = document.getElementById('vault-list');
-    const searchQuery = document.getElementById('search-input').value.toLowerCase();
-    const categoryFilter = document.getElementById('filter-category').value;
+    if (!list) return;
+
+    const searchInput = document.getElementById('search-input');
+    const categorySelect = document.getElementById('filter-category');
     
+    const searchQuery = searchInput ? searchInput.value.toLowerCase() : '';
+    const categoryFilter = categorySelect ? categorySelect.value : 'All';
+    
+    const reusedSet = getReusedPasswordSet();
     list.innerHTML = '';
     
     const filtered = vaultData.filter(item => {
@@ -401,7 +453,7 @@ function renderVault() {
         if (activeDashboardFilter === 'weak') {
             matchesDashboard = assessPasswordStrength(item.pass).label === 'Weak';
         } else if (activeDashboardFilter === 'reused') {
-            matchesDashboard = item.isReused;
+            matchesDashboard = item.pass && reusedSet.has(item.pass);
         } else if (activeDashboardFilter === 'vulnerable') {
             matchesDashboard = item.pass.length < 12;
         }
@@ -437,7 +489,7 @@ function renderVault() {
         
         const badge = document.createElement('span');
         badge.className = 'badge-tag';
-        badge.innerText = item.category;
+        badge.innerText = item.category || 'General';
         
         titleRow.appendChild(h4);
         titleRow.appendChild(badge);
@@ -465,17 +517,16 @@ function renderVault() {
         
         const rating = assessPasswordStrength(item.pass);
         const dot = document.createElement('span');
-        dot.className = `strength-indicator-dot ${rating.class.replace('strength-', 'bg-')}`;
-        dot.style.backgroundColor = `var(--${rating.class.replace('strength-', '')})`;
+        dot.className = `status-indicator-dot online bg-${rating.token}`;
         
         const label = document.createElement('span');
-        label.className = `strength-text-label ${rating.class.replace('strength-', 'text-')}`;
+        label.className = `strength-text-label text-${rating.token}`;
         label.innerText = rating.label;
         
         secRow.appendChild(dot);
         secRow.appendChild(label);
         
-        if (item.isReused) {
+        if (item.pass && reusedSet.has(item.pass)) {
             const reuseLabel = document.createElement('span');
             reuseLabel.className = 'strength-text-label text-warning';
             reuseLabel.innerText = '• Reused';
@@ -596,12 +647,10 @@ function showAddModal() {
     if (tagsEl) tagsEl.value = '';
     document.getElementById('entry-notes').value = '';
     
-    // Visibility icon defaults
     const pwInput = document.getElementById('entry-pass');
-    pwInput.type = 'password';
+    if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength('');
-    
     document.getElementById('modal').classList.add('active');
 }
 
@@ -621,10 +670,9 @@ function showEditModal(id) {
     document.getElementById('entry-notes').value = item.notes || '';
     
     const pwInput = document.getElementById('entry-pass');
-    pwInput.type = 'password';
+    if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength(item.pass);
-    
     document.getElementById('modal').classList.add('active');
 }
 
@@ -637,11 +685,13 @@ function analyzeEntryPasswordStrength(password) {
     const fill = document.getElementById('modal-strength-fill');
     const label = document.getElementById('modal-strength-label');
     
-    // Wipe class
-    fill.className = 'strength-bar-fill';
-    fill.classList.add(rating.class);
-    label.innerText = rating.label;
-    label.className = rating.class.replace('strength-', 'text-');
+    if (fill) {
+        fill.className = `strength-bar-fill strength-${rating.token}`;
+    }
+    if (label) {
+        label.innerText = rating.label;
+        label.className = `text-${rating.token}`;
+    }
 }
 
 /**
@@ -692,12 +742,9 @@ function saveEntry() {
     resetAutoLock();
 }
 
-/**
- * Deletes item from vault.
- */
 function deleteEntry(id) {
-    if (confirm("Are you sure you want to permanently delete this credential record?")) {
-        vaultData = vaultData.filter(item => item.id !== id);
+    if (confirm("Are you sure you want to delete this credential?")) {
+        vaultData = vaultData.filter(i => i.id !== id);
         renderDashboard();
         renderVault();
         resetAutoLock();
@@ -705,26 +752,32 @@ function deleteEntry(id) {
     }
 }
 
-// --- Cryptographic Password Generator Logic ---
+// --- Password Generator Logic ---
 
 /**
- * Generates secure password from UI selections.
+ * Generates cryptographically secure random password using rejection sampling to prevent modulo bias.
  */
 function generatePassword() {
-    const length = parseInt(document.getElementById('gen-length').value);
-    let charset = "";
+    const lengthInput = document.getElementById('gen-length');
+    const length = lengthInput ? parseInt(lengthInput.value) || 16 : 16;
     
-    if (document.getElementById('gen-upper').checked) charset += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    if (document.getElementById('gen-lower').checked) charset += "abcdefghijklmnopqrstuvwxyz";
-    if (document.getElementById('gen-numbers').checked) charset += "0123456789";
-    if (document.getElementById('gen-symbols').checked) charset += "!@#$%^&*()_+~`|}{[]:;?><,./-=";
+    const incLower = document.getElementById('gen-lower')?.checked ?? true;
+    const incUpper = document.getElementById('gen-upper')?.checked ?? true;
+    const incNumbers = document.getElementById('gen-numbers')?.checked ?? true;
+    const incSymbols = document.getElementById('gen-symbols')?.checked ?? true;
+    
+    let charset = '';
+    if (incLower) charset += 'abcdefghijklmnopqrstuvwxyz';
+    if (incUpper) charset += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    if (incNumbers) charset += '0123456789';
+    if (incSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
     
     if (!charset) {
         document.getElementById('gen-result').innerText = "Select options";
         return;
     }
     
-    let generated = "";
+    let generated = '';
     const maxUint32 = 0xFFFFFFFF;
     const range = maxUint32 - (maxUint32 % charset.length);
     
@@ -736,37 +789,37 @@ function generatePassword() {
         }
     }
     
-    document.getElementById('gen-result').innerText = generated;
+    const genResult = document.getElementById('gen-result');
+    if (genResult) genResult.innerText = generated;
     
-    // Assess strength
     const strength = assessPasswordStrength(generated);
     const fill = document.getElementById('gen-strength-fill');
     const label = document.getElementById('gen-strength-label');
     
-    fill.className = 'strength-bar-fill';
-    fill.classList.add(strength.class);
-    label.innerText = strength.label;
-    label.className = strength.class.replace('strength-', 'text-');
+    if (fill) fill.className = `strength-bar-fill strength-${strength.token}`;
+    if (label) {
+        label.innerText = strength.label;
+        label.className = `text-${strength.token}`;
+    }
 }
 
 function copyGeneratedPassword() {
-    const pass = document.getElementById('gen-result').innerText;
-    if (pass === "Select options") return;
+    const pass = document.getElementById('gen-result')?.innerText;
+    if (!pass || pass === "Select options") return;
     copyCredentialPassword(pass);
 }
 
 function fillGeneratedPass() {
     generatePassword();
-    const pass = document.getElementById('gen-result').innerText;
-    document.getElementById('entry-pass').value = pass;
-    analyzeEntryPasswordStrength(pass);
+    const pass = document.getElementById('gen-result')?.innerText;
+    if (pass && pass !== "Select options") {
+        document.getElementById('entry-pass').value = pass;
+        analyzeEntryPasswordStrength(pass);
+    }
 }
 
 // --- Import & Export Mechanics ---
 
-/**
- * Parses universal file import formats.
- */
 function handleUniversalImport(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -944,9 +997,6 @@ function parseCSVContent(text) {
     return rows;
 }
 
-/**
- * Handles .vault encrypted file loads.
- */
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -961,20 +1011,18 @@ function handleFileSelect(event) {
             
             salt = base64ToUint8(content.salt);
             pendingData = { iv: content.iv, data: content.data };
-            
-            // Adjust forms
-            document.getElementById('initialize-prompt').classList.add('hidden');
-            document.getElementById('unlock-prompt').classList.remove('hidden');
-            showToast("Vault file loaded. Ready to unlock.");
+            showUnlockPrompt();
+            showToast("Vault file loaded. Enter your Master Password.");
         } catch (err) {
-            alert("Invalid SecureVault archive file structure.");
+            alert("Invalid vault file format.");
         }
     };
     reader.readAsText(file);
 }
 
-function triggerFileSelect() {
-    document.getElementById('file-input').click();
+function triggerFileInput() {
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) fileInput.click();
 }
 
 // --- GitHub REST API Cloud Sync ($0 Free) ---
@@ -997,7 +1045,6 @@ async function pushToGitHub() {
     showToast("Encrypting & pushing to GitHub...");
     
     try {
-        // Encrypt current vault data
         const encrypted = await encrypt(vaultData, masterKey);
         const payload = {
             salt: uint8ToBase64(salt),
@@ -1006,13 +1053,9 @@ async function pushToGitHub() {
         };
         const payloadString = JSON.stringify(payload, null, 2);
         
-        // Base64 encode for GitHub API (handling Unicode safely)
         const bytes = new TextEncoder().encode(payloadString);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
-        const contentBase64 = btoa(binary);
+        const contentBase64 = uint8ToBase64(bytes);
         
-        // Check if file exists to fetch SHA
         const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
         let sha = null;
         
@@ -1028,7 +1071,6 @@ async function pushToGitHub() {
             sha = getData.sha;
         }
         
-        // PUT update file to GitHub
         const putBody = {
             message: `Update encrypted vault payload [SecureVault App]`,
             content: contentBase64,
@@ -1089,11 +1131,8 @@ async function pullFromGitHub() {
         
         const getData = await getRes.json();
         
-        // Decode base64 content from GitHub
         const cleanBase64 = getData.content.replace(/\s/g, '');
-        const binary = atob(cleanBase64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const bytes = base64ToUint8(cleanBase64);
         const payloadString = new TextDecoder().decode(bytes);
         
         const content = JSON.parse(payloadString);
@@ -1104,16 +1143,13 @@ async function pullFromGitHub() {
         salt = base64ToUint8(content.salt);
         
         if (masterKey) {
-            // Decrypt immediately if master key is active
             vaultData = await decrypt(content.data, content.iv, masterKey);
             renderDashboard();
             renderVault();
             showToast("Latest vault pulled and decrypted from GitHub!");
         } else {
-            // Stage for unlock prompt
             pendingData = { iv: content.iv, data: content.data };
-            document.getElementById('initialize-prompt').classList.add('hidden');
-            document.getElementById('unlock-prompt').classList.remove('hidden');
+            showUnlockPrompt();
             showToast("Latest vault loaded from GitHub. Ready to unlock.");
         }
     } catch (err) {
@@ -1134,7 +1170,7 @@ async function saveVaultFile() {
             iv: encrypted.iv,
             data: encrypted.data
         };
-        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'my_passwords.vault';
@@ -1231,24 +1267,29 @@ function updateOnlineStatus() {
  */
 function togglePasswordInput(fieldId) {
     const input = document.getElementById(fieldId);
+    if (!input) return;
     const button = input.nextElementSibling;
     
     if (input.type === 'password') {
         input.type = 'text';
-        button.innerHTML = `
-            <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-        `;
+        if (button) {
+            button.innerHTML = `
+                <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                    <line x1="1" y1="1" x2="23" y2="23"/>
+                </svg>
+            `;
+        }
     } else {
         input.type = 'password';
-        button.innerHTML = `
-            <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                <circle cx="12" cy="12" r="3"/>
-            </svg>
-        `;
+        if (button) {
+            button.innerHTML = `
+                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+            `;
+        }
     }
 }
 
@@ -1286,20 +1327,25 @@ function copyCredentialPassword(text) {
     });
 }
 
+/**
+ * Displays a non-destructive notification toast without interrupting clipboard auto-clear timers.
+ */
 function showToast(msg) {
-    clearInterval(clipboardClearTimer); // Wipes running countdowns
+    clearTimeout(toastHideTimeout);
     
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toast-message');
     const ring = document.getElementById('toast-countdown-ring');
     
-    msgEl.innerText = msg;
-    ring.style.display = 'none'; // No countdown
+    if (msgEl) msgEl.innerText = msg;
+    if (ring) ring.style.display = 'none';
     
-    toast.classList.add('active');
-    setTimeout(() => {
-        toast.classList.remove('active');
-    }, 2500);
+    if (toast) {
+        toast.classList.add('active');
+        toastHideTimeout = setTimeout(() => {
+            toast.classList.remove('active');
+        }, 2500);
+    }
 }
 
 function showCountdownToast(msg, seconds) {
@@ -1307,21 +1353,19 @@ function showCountdownToast(msg, seconds) {
     const msgEl = document.getElementById('toast-message');
     const ring = document.getElementById('toast-countdown-ring');
     
-    msgEl.innerText = `${msg} (Clears in ${seconds}s)`;
-    ring.style.display = 'block';
-    
-    toast.classList.add('active');
+    if (msgEl) msgEl.innerText = `${msg} (Clears in ${seconds}s)`;
+    if (ring) ring.style.display = 'block';
+    if (toast) toast.classList.add('active');
 }
 
 function updateCountdownToast(seconds) {
     const msgEl = document.getElementById('toast-message');
-    msgEl.innerText = `Password copied to clipboard. (Clears in ${seconds}s)`;
+    if (msgEl) msgEl.innerText = `Password copied to clipboard. (Clears in ${seconds}s)`;
 }
 
 // --- Global Event Handling & Auto-Init ---
 
 if (typeof window !== 'undefined') {
-    // Listen to activity events to reset the auto-lock countdown
     ['mousedown', 'keydown', 'mousemove', 'touchstart', 'scroll'].forEach(evt => {
         window.addEventListener(evt, resetAutoLock, true);
     });
@@ -1329,18 +1373,11 @@ if (typeof window !== 'undefined') {
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 
-    // Window startup hooks
     window.onload = () => {
-        // Theme configuration
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-mode');
         }
-        
         updateOnlineStatus();
-
-        // Active flow switches
-        document.getElementById('unlock-prompt').classList.add('hidden');
-        document.getElementById('initialize-prompt').classList.remove('hidden');
     };
 }
 
@@ -1353,6 +1390,8 @@ export {
     decrypt,
     base64ToUint8,
     uint8ToBase64,
+    escapeHtml,
     parseCSVContent,
-    parseJSONImportData
+    parseJSONImportData,
+    getReusedPasswordSet
 };

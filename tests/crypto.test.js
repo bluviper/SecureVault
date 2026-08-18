@@ -16,6 +16,7 @@ import {
     deriveKey,
     encrypt,
     decrypt,
+    escapeHtml,
     parseCSVContent,
     parseJSONImportData
 } from '../src/app.js';
@@ -109,4 +110,11 @@ test('JSON Import Data Parser (Bitwarden & Generic formats)', () => {
     assert.strictEqual(parsed[1].service, 'Slack');
     assert.strictEqual(parsed[1].category, 'Work');
     assert.deepStrictEqual(parsed[1].tags, ['work', 'chat']);
+});
+
+test('HTML Escaping Helper (Prevents XSS in Category Selectors)', () => {
+    assert.strictEqual(escapeHtml(''), '');
+    assert.strictEqual(escapeHtml('Work'), 'Work');
+    assert.strictEqual(escapeHtml('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
+    assert.strictEqual(escapeHtml('Category & "More" \'Tags\''), 'Category &amp; &quot;More&quot; &#039;Tags&#039;');
 });

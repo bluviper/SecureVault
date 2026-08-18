@@ -278,11 +278,6 @@
                     <div class="select-wrapper-outer">
                         <div class="select-wrapper-inner">
                             <select id="filter-category" onchange="renderVault()">
-                                <option value="All">All Categories</option>
-                                <option value="General">General</option>
-                                <option value="Work">Work</option>
-                                <option value="Social">Social</option>
-                                <option value="Banking">Banking</option>
                             </select>
                         </div>
                     </div>
@@ -327,7 +322,7 @@
 
                         <!-- Entropy / Strength indicator -->
                         <div class="generator-strength-bar">
-                            <div id="gen-strength-fill" class="strength-bar-fill strength-none"></div>
+                            <div id="gen-strength-fill" class="strength-bar-fill strength-muted"></div>
                         </div>
                         <div class="strength-label-text">
                             Strength: <span id="gen-strength-label">None</span>
@@ -494,10 +489,6 @@
                     <div class="modal-input-field">
                         <label for="entry-category">Category</label>
                         <select id="entry-category">
-                            <option value="General">General</option>
-                            <option value="Work">Work</option>
-                            <option value="Social">Social</option>
-                            <option value="Banking">Banking</option>
                         </select>
                     </div>
 
@@ -528,7 +519,7 @@
                     </div>
                     <!-- Strength bar inside modal -->
                     <div class="modal-strength-container">
-                        <div id="modal-strength-fill" class="strength-bar-fill strength-none"></div>
+                        <div id="modal-strength-fill" class="strength-bar-fill strength-muted"></div>
                     </div>
                     <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
                 </div>

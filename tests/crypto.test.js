@@ -1,5 +1,6 @@
 import assert from 'assert';
 import test from 'node:test';
+import fs from 'node:fs';
 
 // Web Crypto shim for older Node versions
 if (typeof globalThis.crypto === 'undefined') {
@@ -117,4 +118,25 @@ test('HTML Escaping Helper (Prevents XSS in Category Selectors)', () => {
     assert.strictEqual(escapeHtml('Work'), 'Work');
     assert.strictEqual(escapeHtml('<script>alert(1)</script>'), '&lt;script&gt;alert(1)&lt;/script&gt;');
     assert.strictEqual(escapeHtml('Category & "More" \'Tags\''), 'Category &amp; &quot;More&quot; &#039;Tags&#039;');
+});
+
+test('HTML event handlers map to defined app functions', () => {
+    const html = fs.readFileSync(new URL('../src/index.html', import.meta.url), 'utf8');
+    const js = fs.readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+
+    const defined = new Set();
+    for (const m of js.matchAll(/(?:async\s+)?function\s+([A-Za-z_$][\w$]*)/g)) {
+        defined.add(m[1]);
+    }
+
+    const called = new Set();
+    const skip = new Set(['document', 'getElementById', 'click', 'return', 'this', 'console']);
+    for (const m of html.matchAll(/on(?:click|change|input)="([^"]+)"/g)) {
+        for (const call of m[1].matchAll(/\b([A-Za-z_$][\w$]*)\s*\(/g)) {
+            if (!skip.has(call[1])) called.add(call[1]);
+        }
+    }
+
+    const missing = [...called].filter(name => !defined.has(name));
+    assert.deepStrictEqual(missing, []);
 });

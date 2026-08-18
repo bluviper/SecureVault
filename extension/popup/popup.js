@@ -79,23 +79,32 @@ async function checkSession() {
     });
 }
 
+let pendingPayload = null;
+
 async function handleUnlock() {
     const password = document.getElementById('popup-master-pass').value;
     if (!password) return showToast("Enter password");
 
+    if (pendingPayload) {
+        try {
+            await decryptAndUnlock(pendingPayload, password);
+            return;
+        } catch (err) {
+            return showToast("Invalid master password!");
+        }
+    }
+
     const fileInput = document.getElementById('popup-file-input');
     if (!fileInput.files || fileInput.files.length === 0) {
-        // Check if there is stored pending data or prompt user to select file
-        showToast("Please load a .vault file or pull from GitHub first.");
-        return;
+        return showToast("Please load a .vault file or pull from GitHub first.");
     }
 
     const file = fileInput.files[0];
     const reader = new FileReader();
     reader.onload = async (e) => {
         try {
-            const payload = JSON.parse(e.target.result);
-            await decryptAndUnlock(payload, password);
+            pendingPayload = JSON.parse(e.target.result);
+            await decryptAndUnlock(pendingPayload, password);
         } catch (err) {
             showToast("Invalid file or password!");
         }
@@ -106,7 +115,16 @@ async function handleUnlock() {
 async function handleFileLoad(event) {
     const file = event.target.files[0];
     if (file) {
-        showToast(`Loaded ${file.name}. Enter password.`);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                pendingPayload = JSON.parse(e.target.result);
+                showToast(`Loaded ${file.name}. Enter password to unlock.`);
+            } catch (err) {
+                showToast("Invalid .vault file format.");
+            }
+        };
+        reader.readAsText(file);
     }
 }
 
@@ -260,10 +278,15 @@ function renderVaultList() {
 function generatePassword(length = 16) {
     const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=";
     let res = "";
-    const rand = new Uint32Array(length);
-    crypto.getRandomValues(rand);
-    for (let i = 0; i < length; i++) {
-        res += charset[rand[i] % charset.length];
+    const maxUint32 = 0xFFFFFFFF;
+    const range = maxUint32 - (maxUint32 % charset.length);
+    
+    while (res.length < length) {
+        const rand = new Uint32Array(1);
+        crypto.getRandomValues(rand);
+        if (rand[0] < range) {
+            res += charset.charAt(rand[0] % charset.length);
+        }
     }
     document.getElementById('gen-result').innerText = res;
 }
@@ -288,7 +311,13 @@ function showToast(msg) {
 }
 
 function escapeHtml(str) {
-    return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // --- CRYPTO HELPERS (Native Web Crypto API) ---

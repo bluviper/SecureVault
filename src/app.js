@@ -977,6 +977,150 @@ function triggerFileSelect() {
     document.getElementById('file-input').click();
 }
 
+// --- GitHub REST API Cloud Sync ($0 Free) ---
+
+/**
+ * Pushes the encrypted vault state directly to GitHub repository via GitHub REST API.
+ */
+async function pushToGitHub() {
+    if (!masterKey) return alert("Vault must be unlocked to push data to GitHub.");
+    
+    const token = document.getElementById('setting-gh-token').value.trim();
+    const owner = document.getElementById('setting-gh-owner').value.trim();
+    const repo = document.getElementById('setting-gh-repo').value.trim();
+    const path = 'my_passwords.vault';
+    
+    if (!token || !owner || !repo) {
+        return alert("Please fill in your GitHub Personal Access Token, Repository Owner, and Repository Name.");
+    }
+    
+    showToast("Encrypting & pushing to GitHub...");
+    
+    try {
+        // Encrypt current vault data
+        const encrypted = await encrypt(vaultData, masterKey);
+        const payload = {
+            salt: uint8ToBase64(salt),
+            iv: encrypted.iv,
+            data: encrypted.data
+        };
+        const payloadString = JSON.stringify(payload, null, 2);
+        
+        // Base64 encode for GitHub API (handling Unicode safely)
+        const bytes = new TextEncoder().encode(payloadString);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const contentBase64 = btoa(binary);
+        
+        // Check if file exists to fetch SHA
+        const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        let sha = null;
+        
+        const getRes = await fetch(getUrl, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (getRes.ok) {
+            const getData = await getRes.json();
+            sha = getData.sha;
+        }
+        
+        // PUT update file to GitHub
+        const putBody = {
+            message: `Update encrypted vault payload [SecureVault App]`,
+            content: contentBase64,
+            branch: 'master'
+        };
+        if (sha) putBody.sha = sha;
+        
+        const putRes = await fetch(getUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(putBody)
+        });
+        
+        if (!putRes.ok) {
+            const errData = await putRes.json();
+            throw new Error(errData.message || 'GitHub API rejected commit');
+        }
+        
+        showToast("Synced encrypted vault to GitHub!");
+        alert(`Success!\n\nEncrypted vault committed and pushed to GitHub repository:\nhttps://github.com/${owner}/${repo}`);
+    } catch (err) {
+        alert("GitHub Sync Error: " + err.message);
+    }
+}
+
+/**
+ * Pulls the latest encrypted vault payload from GitHub repository via GitHub REST API.
+ */
+async function pullFromGitHub() {
+    const token = document.getElementById('setting-gh-token').value.trim();
+    const owner = document.getElementById('setting-gh-owner').value.trim();
+    const repo = document.getElementById('setting-gh-repo').value.trim();
+    const path = 'my_passwords.vault';
+    
+    if (!token || !owner || !repo) {
+        return alert("Please fill in your GitHub Personal Access Token, Repository Owner, and Repository Name.");
+    }
+    
+    showToast("Pulling encrypted vault from GitHub...");
+    
+    try {
+        const getUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+        const getRes = await fetch(getUrl, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+        
+        if (!getRes.ok) {
+            const errData = await getRes.json();
+            throw new Error(errData.message || 'File not found on GitHub repo');
+        }
+        
+        const getData = await getRes.json();
+        
+        // Decode base64 content from GitHub
+        const cleanBase64 = getData.content.replace(/\s/g, '');
+        const binary = atob(cleanBase64);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        const payloadString = new TextDecoder().decode(bytes);
+        
+        const content = JSON.parse(payloadString);
+        if (!content.salt || !content.iv || !content.data) {
+            throw new Error("Invalid vault payload structure on GitHub.");
+        }
+        
+        salt = base64ToUint8(content.salt);
+        
+        if (masterKey) {
+            // Decrypt immediately if master key is active
+            vaultData = await decrypt(content.data, content.iv, masterKey);
+            renderDashboard();
+            renderVault();
+            showToast("Latest vault pulled and decrypted from GitHub!");
+        } else {
+            // Stage for unlock prompt
+            pendingData = { iv: content.iv, data: content.data };
+            document.getElementById('initialize-prompt').classList.add('hidden');
+            document.getElementById('unlock-prompt').classList.remove('hidden');
+            showToast("Latest vault loaded from GitHub. Ready to unlock.");
+        }
+    } catch (err) {
+        alert("GitHub Pull Error: " + err.message);
+    }
+}
+
 /**
  * Encrypts state and triggers browser download download.
  */

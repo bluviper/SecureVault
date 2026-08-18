@@ -898,12 +898,6 @@ button {
     margin-top: 4px;
 }
 
-.strength-indicator-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-}
-
 .strength-text-label {
     font-size: 0.65rem;
     font-weight: 600;
@@ -998,10 +992,10 @@ button {
     transition: width 0.3s var(--ease-spring), background-color 0.3s;
 }
 
-.strength-none { background-color: var(--text-muted); width: 5%; }
-.strength-weak { background-color: var(--danger); width: 25%; }
-.strength-medium { background-color: var(--warning); width: 60%; }
-.strength-strong { background-color: var(--success); width: 100%; }
+.strength-muted { background-color: var(--text-muted); width: 5%; }
+.strength-danger { background-color: var(--danger); width: 25%; }
+.strength-warning { background-color: var(--warning); width: 60%; }
+.strength-success { background-color: var(--success); width: 100%; }
 
 .strength-label-text, .strength-tiny-text {
     font-size: 0.75rem;

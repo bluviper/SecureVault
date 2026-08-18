@@ -168,8 +168,6 @@ function getReusedPasswordSet() {
 
 // --- Vault Initialization & State Control ---
 
-// --- Vault Initialization & State Control ---
-
 /**
  * Switches the lock screen view to prompt for Master Password unlock.
  */
@@ -576,7 +574,7 @@ function renderVault() {
         
         const rating = assessPasswordStrength(item.pass);
         const dot = document.createElement('span');
-        dot.className = `status-indicator-dot online bg-${rating.token}`;
+        dot.className = `status-indicator-dot bg-${rating.token}`;
         
         const label = document.createElement('span');
         label.className = `strength-text-label text-${rating.token}`;
@@ -1081,7 +1079,7 @@ function handleFileSelect(event) {
     reader.readAsText(file);
 }
 
-function triggerFileInput() {
+function triggerFileSelect() {
     const fileInput = document.getElementById('file-input');
     if (fileInput) fileInput.click();
 }
@@ -1219,7 +1217,7 @@ async function pullFromGitHub() {
 }
 
 /**
- * Encrypts state and triggers browser download download.
+ * Encrypts state and triggers a browser download of the encrypted vault file.
  */
 async function saveVaultFile() {
     if (!masterKey) return;
@@ -1300,27 +1298,17 @@ function updateOnlineStatus() {
     if (typeof document === 'undefined') return;
     const badge = document.querySelector('.offline-badge');
     if (!badge) return;
-    if (navigator.onLine) {
-        badge.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
-                <path d="M9.5 8.5l5 5m0-5l-5 5"/>
-            </svg>
-            <span>Secure Local</span>
-        `;
-        badge.className = 'offline-badge';
-        badge.title = 'Offline secure environment';
-    } else {
-        badge.innerHTML = `
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
-                <path d="M9.5 8.5l5 5m0-5l-5 5"/>
-            </svg>
-            <span>Strict Offline</span>
-        `;
-        badge.className = 'offline-badge strict-offline';
-        badge.title = 'No network connection active (Maximum Security)';
-    }
+    
+    const online = navigator.onLine;
+    badge.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M1 1v22h22V1H1zm20 20H3V3h18v18z"/>
+            <path d="M9.5 8.5l5 5m0-5l-5 5"/>
+        </svg>
+        <span>${online ? 'Secure Local' : 'Strict Offline'}</span>
+    `;
+    badge.className = online ? 'offline-badge' : 'offline-badge strict-offline';
+    badge.title = online ? 'Offline secure environment' : 'No network connection active (Maximum Security)';
 }
 
 /**
@@ -1371,57 +1359,43 @@ function copyCredentialPassword(text) {
     
     navigator.clipboard.writeText(text).then(() => {
         let seconds = 30;
-        showCountdownToast("Password copied to clipboard.", seconds);
-        
         clearInterval(clipboardClearTimer);
         
-        clipboardClearTimer = setInterval(() => {
-            seconds--;
+        const tick = () => {
             if (seconds <= 0) {
                 clearInterval(clipboardClearTimer);
                 navigator.clipboard.writeText('');
                 showToast("Clipboard cleared for safety.");
             } else {
-                updateCountdownToast(seconds);
+                showToast("Password copied to clipboard.", seconds--);
             }
-        }, 1000);
+        };
+        tick();
+        clipboardClearTimer = setInterval(tick, 1000);
     });
 }
 
 /**
- * Displays a non-destructive notification toast without interrupting clipboard auto-clear timers.
+ * Displays a toast notification. Pass a `countdown` number to render a live
+ * clipboard auto-clear indicator; countdown toasts do not auto-hide.
  */
-function showToast(msg) {
+function showToast(msg, countdown) {
     clearTimeout(toastHideTimeout);
     
     const toast = document.getElementById('toast');
     const msgEl = document.getElementById('toast-message');
     const ring = document.getElementById('toast-countdown-ring');
     
-    if (msgEl) msgEl.innerText = msg;
-    if (ring) ring.style.display = 'none';
+    if (msgEl) msgEl.innerText = countdown ? `${msg} (Clears in ${countdown}s)` : msg;
+    if (ring) ring.style.display = countdown ? 'block' : 'none';
+    if (!toast) return;
     
-    if (toast) {
-        toast.classList.add('active');
+    toast.classList.add('active');
+    if (!countdown) {
         toastHideTimeout = setTimeout(() => {
             toast.classList.remove('active');
         }, 2500);
     }
-}
-
-function showCountdownToast(msg, seconds) {
-    const toast = document.getElementById('toast');
-    const msgEl = document.getElementById('toast-message');
-    const ring = document.getElementById('toast-countdown-ring');
-    
-    if (msgEl) msgEl.innerText = `${msg} (Clears in ${seconds}s)`;
-    if (ring) ring.style.display = 'block';
-    if (toast) toast.classList.add('active');
-}
-
-function updateCountdownToast(seconds) {
-    const msgEl = document.getElementById('toast-message');
-    if (msgEl) msgEl.innerText = `Password copied to clipboard. (Clears in ${seconds}s)`;
 }
 
 // --- Global Event Handling & Auto-Init ---

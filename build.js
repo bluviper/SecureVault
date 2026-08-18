@@ -21,6 +21,21 @@ function build() {
 
         let html = fs.readFileSync(htmlPath, 'utf8');
 
+        // Inline embedded fonts
+        const fontsPath = path.join(SRC_DIR, 'fonts.css');
+        if (fs.existsSync(fontsPath)) {
+            const fontsCss = fs.readFileSync(fontsPath, 'utf8');
+            const fontsRegex = /<link\s+rel="stylesheet"\s+href="fonts\.css"\s*\/?>/i;
+            if (fontsRegex.test(html)) {
+                html = html.replace(fontsRegex, `<style>\n${fontsCss}\n</style>`);
+                console.log(`  🔤 fonts.css inlined (${Math.round(fs.statSync(fontsPath).size / 1024)} KB)`);
+            } else {
+                console.warn('  ⚠️ Warning: No fonts.css link found in index.html to replace.');
+            }
+        } else {
+            console.warn('  ⚠️ Warning: src/fonts.css not found, skipping inline fonts.');
+        }
+
         // Inline CSS
         if (fs.existsSync(cssPath)) {
             const css = fs.readFileSync(cssPath, 'utf8');

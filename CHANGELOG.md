@@ -8,6 +8,18 @@ All notable **architectural** changes to SecureVault are documented here.
 
 ## [Unreleased]
 
+### UI redesign: "Executive Edition" design system (Smorgasbord layout)
+
+- **What** — Replaced the Ethereal-Glass aesthetic with a dense, orderly desktop-ledger design system from `frontend-suggestions.txt`: two new themes — **Warm Editorial** light (`editorial-light`, archival cream + deep trust blue) and **Midnight Executive** dark (`executive-dark`, obsidian + cobalt) — plus strict typography, no-hover-hunting controls, and generous tap targets.
+- **How** —
+  - Migrated theming from a `body.light-mode` class toggle to a `data-theme` attribute on `<html>` backed by full semantic CSS tokens (`--canvas-bg`, `--panel-bg`, `--input-bg`, `--border-strong/subtle`, `--accent-solid/soft`, `--indicator-safe/risk/alert`, 8pt spacing scale, layered shadows). All legacy token names removed from source.
+  - Removed the ambient glow orbs and glassmorphism (`backdrop-filter`, translucent surfaces); panels are now solid and grounded.
+  - Vault list is now a **ledger**: hairline row dividers, rigid `1fr auto` grid alignment, hover highlight instead of card float, and a new per-row **Reveal** action that shows the password in a mono ledger cell (previously the list had no password display at all). Copy/Edit/Delete remain permanently visible — no hover hunting.
+  - Typography rules from the spec: all credential values (passwords, usernames, generated passphrases) forced to `JetBrains Mono` at ≥15px; field labels standardized to bold uppercase with `0.05em` tracking; JetBrains Mono provides distinct `I`/`l`/`1` and `O`/`0` glyphs.
+  - Humanization pass: removed every inline `style=` attribute and emoji button (☁️/🔄/🎲 replaced with inline SVGs), added `aria-label`s, converted the theme toggle to a real `<button>`, added `:focus-visible` rings, and extracted shared `EYE_OPEN_SVG`/`EYE_CLOSED_SVG` constants so visibility toggling (inputs + list reveal) is DRY.
+  - **Note:** the spec's `--font-family-sans` token names `Inter`, but the app keeps the already-embedded **Plus Jakarta Sans** to preserve the offline-first, single-file architecture (Inter is not embedded and would break offline rendering).
+- **Why** — The previous visual layer prioritized atmosphere over readability; this pass optimizes for scannability, physical comfort (≥12px button padding, 40px icon hit targets, 8pt grid), immediate action recognition, and accessibility, per the UI/UX spec — without touching the crypto or data architecture.
+
 ### Refactor: code-quality hardening & slimming
 
 - **What** — Completed the strength-token refactor and removed ~60 lines of dead/duplicated code across `src/app.js`, `src/style.css`, and `src/index.html`.

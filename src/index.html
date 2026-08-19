@@ -16,10 +16,17 @@
     <!-- LOCK & INITIALIZE SCREEN -->
     <div id="lock-screen" class="lock-container">
         <div class="lock-card-outer">
+            <!-- 1. Borde con luz giratoria animada (Modo Oscuro) -->
+            <div class="glow-card-border-spin"></div>
+
+            <!-- 2. Fondo con degradado azul (Máscara interna modo oscuro) -->
+            <div class="glow-card-bg-mask"></div>
+
+            <!-- 3. Contenido de la Card -->
             <div class="lock-card-inner">
                 <div class="brand-header">
                     <div class="shield-logo">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             <path d="M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
                             <path d="M12 11v6"/>

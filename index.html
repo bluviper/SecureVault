@@ -248,7 +248,7 @@ button {
 }
 
 /* Shared outer/inner card architecture */
-.lock-card-outer, .settings-card-outer, .modal-container-outer {
+.settings-card-outer, .modal-container-outer {
     background: var(--panel-bg);
     border: 1px solid var(--border-subtle);
     box-shadow: var(--shadow-md);
@@ -256,7 +256,7 @@ button {
     padding: var(--space-sm);
 }
 
-.lock-card-inner, .settings-card-inner, .modal-container-inner {
+.settings-card-inner, .modal-container-inner {
     background: var(--panel-bg-2);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -265,7 +265,7 @@ button {
 }
 
 /* ==========================================================================
-   Lock & Unlock screen
+   Lock & Unlock screen — 21st.dev Animated Glow Feature Card Component
    ========================================================================== */
 .lock-container {
     animation: lockReveal 0.8s var(--ease-out) forwards;
@@ -273,22 +273,153 @@ button {
     margin: 8vh auto 0;
 }
 
+/* 21st.dev Animated Glow Card Principal Container */
+.lock-card-outer {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem; /* 16px / rounded-2xl */
+    padding: 0;
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* Light theme (bg-slate-50 / border-slate-200 / shadow-lg) */
+    background-color: var(--panel-bg);
+    border: 1px solid var(--border-subtle);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+
+/* Hover effect from 21st.dev snippet: hover:shadow-2xl hover:shadow-blue-500/10 */
+.lock-card-outer:hover {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 30px rgba(59, 130, 246, 0.15);
+}
+
+:root[data-theme="executive-dark"] .lock-card-outer {
+    /* Dark theme (dark:bg-[#0d1527] / dark:border-blue-900/40 / dark:shadow-2xl) */
+    background-color: #0d1527;
+    border: 1px solid rgba(30, 58, 138, 0.4);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+}
+
+:root[data-theme="executive-dark"] .lock-card-outer:hover {
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 35px rgba(59, 130, 246, 0.2);
+}
+
+/* 1. Borde con luz giratoria animada (Modo Oscuro) */
+.glow-card-border-spin {
+    position: absolute;
+    top: -120%;
+    left: -120%;
+    right: -120%;
+    bottom: -120%;
+    pointer-events: none;
+    transition: opacity 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
+    opacity: 0;
+    animation: glowSpin 6s linear infinite;
+    background: conic-gradient(from 0deg, transparent 0deg 340deg, #3b82f6 360deg);
+}
+
+:root[data-theme="executive-dark"] .glow-card-border-spin {
+    opacity: 0.6; /* dark:opacity-60 */
+}
+
+.lock-card-outer:hover .glow-card-border-spin {
+    opacity: 0.95;
+}
+
+@keyframes glowSpin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 2. Fondo con degradado azul (Máscara interna modo oscuro) */
+.glow-card-bg-mask {
+    position: absolute;
+    top: 1.5px;
+    left: 1.5px;
+    right: 1.5px;
+    bottom: 1.5px;
+    border-radius: 15px; /* rounded-[15px] */
+    z-index: 1;
+    display: none; /* hidden */
+}
+
+:root[data-theme="executive-dark"] .glow-card-bg-mask {
+    display: block; /* dark:block */
+    background: linear-gradient(180deg, #132240 0%, #0d172c 40%, #090e1a 100%);
+}
+
+/* 3. Contenido de la Card */
+.lock-card-inner {
+    position: relative;
+    z-index: 10;
+    border-radius: 15px;
+    padding: var(--space-2xl); /* p-8 */
+    background: transparent;
+    border: none;
+}
+
 .brand-header {
     text-align: center;
     margin-bottom: var(--space-xl);
 }
 
+/* Icon Box matching dotted.txt DotPattern & 21st.dev Squircle spec:
+   Dark obsidian interior, tight 5px slate-500 grey micro-dot texture (fill-slate-500/50), vibrant orange border (#f97316), squircle shape */
 .shield-logo {
+    position: relative;
     display: inline-flex;
     justify-content: center;
     align-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: var(--radius-lg);
-    background: var(--accent-soft);
-    color: var(--accent-solid);
-    margin-bottom: var(--space-lg);
-    border: 1px solid var(--border-subtle);
+    width: 76px;
+    height: 76px;
+    border-radius: 1.125rem; /* Squircle (18px) */
+    margin: 0 auto var(--space-lg) auto;
+    transition: all 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    
+    /* Vibrant orange border & glowing ambient shadow */
+    border: 1.5px solid #f97316;
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.25);
+
+    /* Dark obsidian background inside squircle */
+    background-color: #080d1a;
+
+    /* Tight slate-500 grey micro-dot pattern (5px 5px close grid spacing, fill-slate-500/50 from dotted.txt) */
+    background-image: radial-gradient(rgba(148, 163, 184, 0.45) 0.6px, transparent 0.6px);
+    background-size: 5px 5px;
+    background-position: center;
+    color: #f97316;
+}
+
+:root[data-theme="editorial-light"] .shield-logo {
+    background-color: #0a0f1d; /* Solid dark background inside squircle for high contrast */
+    background-image: radial-gradient(rgba(148, 163, 184, 0.45) 0.6px, transparent 0.6px);
+    background-size: 5px 5px;
+    background-position: center;
+    border-color: #ea580c;
+    box-shadow: 0 0 18px rgba(234, 88, 12, 0.25);
+    color: #f97316;
+}
+
+:root[data-theme="executive-dark"] .shield-logo {
+    background-color: #050811;
+    background-image: radial-gradient(rgba(148, 163, 184, 0.5) 0.6px, transparent 0.6px);
+    background-size: 5px 5px;
+    background-position: center;
+    border-color: #f97316;
+    box-shadow: 0 0 25px rgba(249, 115, 22, 0.3);
+    color: #f97316;
+}
+
+.shield-logo:hover,
+.lock-card-outer:hover .shield-logo {
+    transform: scale(1.06);
+    box-shadow: 0 0 30px rgba(249, 115, 22, 0.45);
+    border-color: #fb923c;
 }
 
 .brand-header h1 {
@@ -806,6 +937,7 @@ input[type="password"],
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    padding-top: 4px; /* Breathing room for card hover translate */
 }
 
 #tab-vault.active > :not(.vault-list) {
@@ -819,10 +951,13 @@ input[type="password"],
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: var(--space-md);
-    margin-bottom: var(--space-xl);
+    padding: 6px 4px 4px 4px; /* Breathing room so top border/shadow is never obstructed on hover */
+    margin: -6px -4px calc(var(--space-xl) - 4px) -4px;
 }
 
 .bento-card {
+    position: relative;
+    z-index: 1;
     background: var(--panel-bg-2);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -831,9 +966,10 @@ input[type="password"],
 }
 
 .bento-card:hover {
-    transform: translateY(-1px);
+    z-index: 10;
+    transform: translateY(-2px);
     border-color: var(--border-strong);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), var(--shadow-sm);
 }
 
 .cursor-pointer {
@@ -997,6 +1133,8 @@ input[type="password"],
 }
 
 .vault-item-outer {
+    position: relative;
+    z-index: 1;
     background: transparent;
     border-bottom: 1px solid var(--border-subtle);
     animation: fadeInUp 0.4s var(--ease-out) both;
@@ -1015,6 +1153,7 @@ input[type="password"],
 }
 
 .vault-item-outer:hover {
+    z-index: 2;
     background: var(--hover-bg);
 }
 
@@ -1729,10 +1868,17 @@ input[type="range"]::-moz-range-thumb {
     <!-- LOCK & INITIALIZE SCREEN -->
     <div id="lock-screen" class="lock-container">
         <div class="lock-card-outer">
+            <!-- 1. Borde con luz giratoria animada (Modo Oscuro) -->
+            <div class="glow-card-border-spin"></div>
+
+            <!-- 2. Fondo con degradado azul (Máscara interna modo oscuro) -->
+            <div class="glow-card-bg-mask"></div>
+
+            <!-- 3. Contenido de la Card -->
             <div class="lock-card-inner">
                 <div class="brand-header">
                     <div class="shield-logo">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                             <path d="M12 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/>
                             <path d="M12 11v6"/>

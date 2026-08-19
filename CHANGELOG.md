@@ -8,6 +8,15 @@ All notable **architectural** changes to SecureVault are documented here.
 
 ## [Unreleased]
 
+### 21st.dev components & UI polish
+
+- **What** — Implemented 21st.dev component aesthetics on the lock/login screen and fixed card hover clipping in the Credentials dashboard tab.
+- **How** —
+  - **Animated Glow Feature Card:** Added a continuous rotating conic-gradient light beam (`conic-gradient(from 0deg, transparent 0 340deg, #3b82f6 360deg)`) and dark linear background mask to `.lock-card-outer`.
+  - **Squircle Logo & Micro-Dot Pattern:** Enclosed the brand shield icon in a dark obsidian squircle framed by a vibrant `#f97316` orange border, patterned with a tight `5px 5px` slate-500 micro-dot grid (`radial-gradient(rgba(148, 163, 184, 0.45) 0.6px, transparent 0.6px)`).
+  - **Hover Clipping Fix:** Added top padding and negative offset margins to `.dashboard-bento` and `#tab-vault.active`, plus relative layer stacking (`z-index: 10`), eliminating top-line card clipping when hovering upward on stat cards.
+- **Why** — Enhances landing experience visual hierarchy with high-tech component patterns while resolving layout edge clipping during user interaction.
+
 ### UI redesign: "Executive Edition" design system (Smorgasbord layout)
 
 - **What** — Replaced the Ethereal-Glass aesthetic with a dense, orderly desktop-ledger design system from `frontend-suggestions.txt`: two new themes — **Warm Editorial** light (`editorial-light`, archival cream + deep trust blue) and **Midnight Executive** dark (`executive-dark`, obsidian + cobalt) — plus strict typography, no-hover-hunting controls, and generous tap targets.

@@ -1,36 +1,57 @@
-# 🛡️ SecureVault - Portable Password Manager
+# 🛡️ SecureVault — Portable Password Manager (V2.0 Executive Edition)
 
-SecureVault is a secure, single-file, offline-first password manager designed for portability. It runs entirely in your web browser with zero external dependencies, no internet required, and zero tracking.
+SecureVault is a secure, single-file, offline-first password manager designed for zero-trust portability and high-density executive aesthetics. It runs entirely in your web browser with zero external dependencies, no server backends, and zero telemetry.
 
-## ✨ Key Features
-- **Military-Grade Encryption:** Uses AES-256-GCM authenticated encryption for all data.
-- **Hardened Key Derivation:** PBKDF2 with 600,000 iterations (OWASP recommended) to protect against brute-force.
-- **Zero-Trace Architecture:** No sensitive data is stored in the browser's persistent storage (LocalStorage/IndexedDB). Everything stays in volatile memory until you save it to a file.
-- **Privacy First:** Completely offline. No telemetry, no cloud sync, no "calling home."
-- **Portable:** A single HTML file that works on any modern desktop or mobile browser.
+---
 
-## 🚀 Quick Start Guide
-1. **Open the App:** Open the `index.html` file in any modern web browser.
-2. **Create Vault:** On your first run, enter a strong **Master Password** to initialize your vault.
-3. **Add Entries:** Use the "Vault" tab to add your accounts, usernames, and passwords.
-4. **💾 Save Your Data:** Click the **Save** button. This will download a file named `my_passwords.vault`.
-5. **Secure Your File:** Move your `.vault` file to a secure location, such as an encrypted thumbdrive.
+## ✨ Highlights & Features
 
-## 🔓 Accessing Your Existing Vault
-1. Open the `index.html` file.
-2. Click **Load Vault File** and select your `.vault` file.
-3. Enter your **Master Password** to decrypt and view your passwords.
+- **🔒 Military-Grade Encryption:** AES-256-GCM authenticated encryption for all vault payloads.
+- **🛡️ Hardened Key Derivation:** PBKDF2 with 600,000 iterations (OWASP recommendation) to resist brute-force attacks.
+- **📦 Single-File Portability:** Everything (HTML, CSS, JS, and typography) is bundled into a single standalone `index.html` file (~999 KB) that runs offline on any desktop or mobile browser.
+- **🎨 21st.dev Design System & Dual Themes:**
+  - **Animated Glow Feature Card:** Login screen featuring a continuous rotating conic light beam border and dark background mask.
+  - **Squircle Logo Enclosure:** High-contrast squircle logo framed by a vibrant orange border and tight slate-500 micro-dot matrix pattern.
+  - **Dual Themes:** **Warm Editorial** light theme (`editorial-light`, archival cream) and **Midnight Executive** dark theme (`executive-dark`, obsidian slate).
+  - **Dense Desktop Ledger:** Scaled `JetBrains Mono` typography for clear `I`/`l`/`1` & `O`/`0` glyph distinction, permanent interaction controls (no hover hunting), and inline password reveal toggles.
+- **⚡ Browser Extension (Manifest V3):** Dedicated popup vault with active-tab domain matching and active form autofill (`extension/`).
+- **☁️ $0 Encrypted Cloud Sync:** Optional 1-click push/pull sync to a private GitHub repository via REST API.
+- **🖥️ Native Desktop Launcher:** Includes `Launch-SecureVault.bat` for launching as a frameless, standalone desktop app on Windows.
+- **⏱️ Auto-Lock & Anti-Leak:** Volatile in-memory session decryption, 5-minute inactivity auto-lock, and 30-second clipboard auto-clear.
 
-## 🛡️ Security & Privacy
-- **No Recovery:** If you lose your Master Password or delete your `.vault` file, your data **cannot** be recovered.
-- **Auto-Lock:** The vault automatically locks after 5 minutes of inactivity (adjustable in Settings).
-- **Clipboard Protection:** Copied passwords are automatically cleared from your clipboard after 30 seconds.
-- **Export Options:** You can export your data to unencrypted JSON or CSV formats from the Settings tab for easy backup or migration.
+---
 
-## 🛠️ Tech Stack
-- Vanilla HTML5 / CSS3
-- Vanilla JavaScript (Web Crypto API)
-- Zero external libraries or frameworks.
+## 🚀 Quick Start
+
+### Option A: Standard Single-File Use
+1. Open [index.html](file:///D:/ai-playgrnd/secVault/index.html) in any web browser.
+2. Set a **Master Password** to initialize a new vault, or click **Unlock** if a vault payload is saved in local storage.
+3. Click **Save** to export your encrypted `.vault` file to disk or USB drive.
+
+### Option B: Windows Desktop App Mode
+Double-click `Launch-SecureVault.bat` to launch SecureVault as a standalone desktop app window using Microsoft Edge / Chrome.
+
+### Option C: Browser Extension
+Load the `extension/` directory as an unpacked extension in Chrome/Edge (`chrome://extensions`) for toolbar access and ⚡ autofill.
+
+---
+
+## 🛠️ Development & Building
+
+SecureVault uses a zero-dependency ESM build script:
+
+```bash
+# Build single-file bundle (src/ -> index.html)
+node build.js
+
+# Build in watch mode
+node build.js --watch
+
+# Run unit test suite (crypto, parsers, XSS helpers, handler maps)
+npm test
+```
+
+---
 
 ## 📄 License
-This project is open-source and available under the [MIT License](LICENSE).
+Open-source under the [MIT License](LICENSE).

@@ -149,4 +149,25 @@ class AndroidVaultBridge(
             clipboard.setPrimaryClip(clip)
         }
     }
+
+    /**
+     * Opens system Passwords, Credentials & Autofill settings.
+     */
+    @JavascriptInterface
+    fun openAutofillSettings() {
+        activity.runOnUiThread {
+            try {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE).apply {
+                    data = android.net.Uri.parse("package:com.bluviper.securevault")
+                }
+                activity.startActivity(intent)
+            } catch (e: Exception) {
+                try {
+                    activity.startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS))
+                } catch (e2: Exception) {
+                    e2.printStackTrace()
+                }
+            }
+        }
+    }
 }

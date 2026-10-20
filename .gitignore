@@ -6,3 +6,12 @@ GEMINI.md:Zone.Identifier
 .DS_Store
 node_modules/
 GEMINI.md
+bitwarden_export*
+vault_export_unencrypted*
+.tmp_apk_analysis/
+.tmp_apkm_analysis/
+*.apkm
+*.apk
+.claude/
+
+

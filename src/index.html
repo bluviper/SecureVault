@@ -40,19 +40,17 @@
                 <div id="initialize-prompt" class="auth-flow hidden">
                     <p class="flow-desc">Welcome! Set a strong Master Password to create your new encrypted vault.</p>
                     
-                    <div class="input-group-outer">
-                        <div class="input-group-inner">
-                            <label for="new-master-pw">Set Master Password</label>
-                            <div class="password-field-wrapper">
-                                <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
-                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')" aria-label="Toggle password visibility">
-                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="floating-field lock-floating-field">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
+                            <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')" aria-label="Toggle password visibility">
+                                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
                         </div>
+                        <label class="floating-label" for="new-master-pw">Set Master Password</label>
                     </div>
 
                     <div class="btn-group-vertical">
@@ -79,19 +77,17 @@
                 <div id="unlock-prompt" class="auth-flow hidden">
                     <p class="flow-desc">Welcome back! Enter your Master Password to decrypt and access your credentials.</p>
                     
-                    <div class="input-group-outer">
-                        <div class="input-group-inner">
-                            <label for="master-pw">Master Password</label>
-                            <div class="password-field-wrapper">
-                                <input type="password" id="master-pw" placeholder="Enter password to unlock...">
-                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('master-pw')" aria-label="Toggle password visibility">
-                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="floating-field lock-floating-field">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="master-pw" placeholder="Enter password to unlock...">
+                            <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('master-pw')" aria-label="Toggle password visibility">
+                                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
                         </div>
+                        <label class="floating-label" for="master-pw">Master Password</label>
                     </div>
 
                     <div class="btn-group-vertical">
@@ -181,13 +177,6 @@
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
                 <span>Credentials</span>
-            </div>
-            <div class="tab" id="tab-btn-generator" onclick="switchTab('generator')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <polyline points="16 18 22 12 16 6"/>
-                    <polyline points="8 6 2 12 8 18"/>
-                </svg>
-                <span>Generator</span>
             </div>
             <div class="tab" id="tab-btn-settings" onclick="switchTab('settings')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -302,75 +291,7 @@
                 </div>
             </div>
 
-            <!-- 2. GENERATOR VIEW -->
-            <div id="tab-generator" class="tab-pane">
-                <div class="generator-container-outer">
-                    <div class="generator-container-inner">
-                        <div class="generated-display-panel">
-                            <div class="result-box" id="gen-result">••••••••••••••••</div>
-                            <div class="display-actions">
-                                <button type="button" class="btn-icon-action" onclick="copyGeneratedPassword()" title="Copy Generated Password">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                </button>
-                                <button type="button" class="btn-icon-action" onclick="generatePassword()" title="Generate New">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Entropy / Strength indicator -->
-                        <div class="generator-strength-bar">
-                            <div id="gen-strength-fill" class="strength-bar-fill strength-muted"></div>
-                        </div>
-                        <div class="strength-label-text">
-                            Strength: <span id="gen-strength-label">None</span>
-                        </div>
-
-                        <div class="generator-options">
-                            <div class="option-slider-row">
-                                <div class="option-label-info">
-                                    <span>Password Length</span>
-                                    <strong id="len-val">16</strong>
-                                </div>
-                                <input type="range" id="gen-length" min="8" max="64" value="16" oninput="document.getElementById('len-val').innerText = this.value; generatePassword();">
-                            </div>
-
-                            <div class="option-grid">
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-upper" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Uppercase (A-Z)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-lower" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Lowercase (a-z)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-numbers" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Numbers (0-9)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-symbols" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Special Symbols (!@#$)</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. SETTINGS VIEW -->
+            <!-- 2. SETTINGS VIEW -->
             <div id="tab-settings" class="tab-pane">
                 <div class="settings-sections">
                     <!-- Session & Security -->
@@ -439,7 +360,7 @@
                     <div class="settings-card-outer">
                         <div class="settings-card-inner">
                             <h3>Import Records</h3>
-                            <p class="settings-desc">Import CSV or JSON files from Bitwarden, LastPass, or generic structures.</p>
+                            <p class="settings-desc">Import CSV, JSON, or KeePass XML (.xml) files from Bitwarden, KeePassXC, LastPass, or generic structures.</p>
                             
                             <div class="settings-action-box">
                                 <button class="btn-secondary" onclick="document.getElementById('import-input').click()">
@@ -449,9 +370,9 @@
                                         <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
                                         <polyline points="16 16 12 12 8 16"/>
                                     </svg>
-                                    <span>Upload JSON or CSV</span>
+                                    <span>Upload JSON, CSV, or XML</span>
                                 </button>
-                                <input type="file" id="import-input" class="hidden" accept=".csv,.json" onchange="handleUniversalImport(event)">
+                                <input type="file" id="import-input" class="hidden" accept=".csv,.json,.xml" onchange="handleUniversalImport(event)">
                             </div>
                         </div>
                     </div>
@@ -472,18 +393,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- Factory Reset / Data Clear -->
-                    <div class="settings-card-outer">
-                        <div class="settings-card-inner border-alert-dim">
-                            <h3 class="text-danger">Wipe Session Data</h3>
-                            <p class="settings-desc">Clear the active volatile memory database and return to lock screen. Ensure you've downloaded/saved your file!</p>
-                            
-                            <button class="btn-danger" onclick="confirmWipeSession()">
-                                Clear Vault Session
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
@@ -497,26 +406,50 @@
             <h2 id="modal-title">Add Entry</h2>
             
             <div class="modal-form">
+                <div class="entry-type-tabs segmented-control" role="radiogroup" aria-label="Entry Type">
+                    <div class="segmented-grid">
+                        <span class="seg-label" aria-hidden="true">Login</span>
+                        <span class="seg-label" aria-hidden="true">Card</span>
+                        <span class="seg-label" aria-hidden="true">Identity</span>
+                        <span class="seg-label" aria-hidden="true">SSH Key</span>
+
+                        <div id="entry-type-thumb" class="seg-thumb" aria-hidden="true">
+                            <div id="entry-type-thumb-inner" class="seg-thumb-inner">
+                                <span class="seg-label seg-label-active">Login</span>
+                                <span class="seg-label seg-label-active">Card</span>
+                                <span class="seg-label seg-label-active">Identity</span>
+                                <span class="seg-label seg-label-active">SSH Key</span>
+                            </div>
+                        </div>
+
+                        <div class="seg-hit-grid">
+                            <button type="button" role="radio" aria-checked="true" class="entry-type-btn active" data-entry-type="login" onclick="setModalEntryType('login')"><span class="sr-only">Login</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="card" onclick="setModalEntryType('card')"><span class="sr-only">Card</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="identity" onclick="setModalEntryType('identity')"><span class="sr-only">Identity</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="ssh" onclick="setModalEntryType('ssh')"><span class="sr-only">SSH Key</span></button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="input-row-grid">
-                    <div class="modal-input-field">
-                        <label for="entry-category">Category</label>
+                    <div class="modal-input-field floating-field is-raised">
                         <select id="entry-category">
                         </select>
+                        <label class="floating-label" for="entry-category">Category</label>
                     </div>
 
-                    <div class="modal-input-field">
-                        <label for="entry-service">Service Name / Website</label>
+                    <div class="modal-input-field floating-field">
                         <input type="text" id="entry-service" placeholder="e.g. Google, Amazon...">
+                        <label id="label-entry-service" class="floating-label" for="entry-service">Service Name / Website</label>
                     </div>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-user">Username / Email</label>
+                <div class="modal-input-field floating-field">
                     <input type="text" id="entry-user" placeholder="e.g. email@domain.com">
+                    <label id="label-entry-user" class="floating-label" for="entry-user">Username / Email</label>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-pass">Password</label>
+                <div class="modal-input-field floating-field">
                     <div class="input-action-inline">
                         <div class="password-field-wrapper">
                             <input type="password" id="entry-pass" oninput="analyzeEntryPasswordStrength(this.value)">
@@ -527,7 +460,7 @@
                                 </svg>
                             </button>
                         </div>
-                        <button type="button" class="btn-dice" onclick="fillGeneratedPass()" title="Generate Random Password" aria-label="Generate random password">
+                        <button type="button" id="btn-dice-pass" class="btn-dice" onclick="fillGeneratedPass()" title="Generate Random Password" aria-label="Generate random password">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <rect x="3" y="3" width="18" height="18" rx="4"/>
                                 <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/>
@@ -537,21 +470,49 @@
                             </svg>
                         </button>
                     </div>
-                    <!-- Strength bar inside modal -->
-                    <div class="modal-strength-container">
-                        <div id="modal-strength-fill" class="strength-bar-fill strength-muted"></div>
+                    <label id="label-entry-pass" class="floating-label" for="entry-pass">Password</label>
+                    <!-- Strength bar inside modal (Login entries only) -->
+                    <div id="modal-pass-strength-section">
+                        <div class="modal-strength-container">
+                            <div id="modal-strength-fill" class="strength-bar-fill strength-muted"></div>
+                        </div>
+                        <div class="modal-pass-meta-row">
+                            <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
+                            <div class="modal-gen-options" title="Random generator options for the Dice button">
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-upper" checked onchange="handleModalGenOptionChange()"><span>A-Z</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-lower" checked onchange="handleModalGenOptionChange()"><span>a-z</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-numbers" checked onchange="handleModalGenOptionChange()"><span>0-9</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-symbols" checked onchange="handleModalGenOptionChange()"><span>!@#$</span></label>
+                                <input type="number" id="modal-gen-length" class="modal-gen-len-input" min="8" max="64" value="16" title="Generated password length (8-64)" onchange="handleModalGenOptionChange()">
+                            </div>
+                        </div>
                     </div>
-                    <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-tags">Tags (Optional, comma-separated)</label>
+                <div id="modal-card-extra" class="input-row-grid hidden">
+                    <div class="modal-input-field floating-field">
+                        <input type="text" id="entry-card-expiry" placeholder="e.g. 08/29" maxlength="7">
+                        <label class="floating-label" for="entry-card-expiry">Expiry (MM/YY)</label>
+                    </div>
+                    <div class="modal-input-field floating-field">
+                        <input type="password" id="entry-card-cvv" placeholder="e.g. 123" maxlength="6">
+                        <label class="floating-label" for="entry-card-cvv">CVV / Security Code</label>
+                    </div>
+                </div>
+
+                <div id="modal-totp-section" class="modal-input-field floating-field">
+                    <input type="text" id="entry-totp" placeholder="e.g. JBSWY3DPEHPK3PXP or otpauth://totp/...">
+                    <label class="floating-label" for="entry-totp">TOTP Secret / otpauth:// URI (Optional 2FA)</label>
+                </div>
+
+                <div class="modal-input-field floating-field">
                     <input type="text" id="entry-tags" placeholder="e.g. work, email, critical">
+                    <label class="floating-label" for="entry-tags">Tags (Optional, comma-separated)</label>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-notes">Notes (Optional)</label>
+                <div class="modal-input-field floating-field">
                     <textarea id="entry-notes" rows="3" placeholder="API keys, secret questions, URLs..."></textarea>
+                    <label class="floating-label" for="entry-notes">Notes (Optional)</label>
                 </div>
             </div>
 

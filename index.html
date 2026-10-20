@@ -452,7 +452,7 @@ button {
 }
 
 /* ==========================================================================
-   Inputs & controls
+   Inputs & controls (Single-surface glow + interior.dev Floating Labels)
    ========================================================================== */
 input[type="password"],
 input[type="text"],
@@ -463,17 +463,27 @@ textarea {
     background: var(--input-bg);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: 10px 14px;
+    padding: 10px 13px;
     color: var(--text-main);
-    font-size: 0.9375rem;
+    font-size: 0.9rem;
     font-weight: 500;
     outline: none;
-    transition: border-color var(--speed), box-shadow var(--speed);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
-input:focus, select:focus, textarea:focus {
+input:focus,
+select:focus,
+textarea:focus {
     border-color: var(--accent-solid);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 2px var(--accent-solid);
+    outline: none;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline: none;
 }
 
 /* Native dropdown list — keep options readable in both themes */
@@ -490,46 +500,109 @@ input[type="password"],
     letter-spacing: 0.02em;
 }
 
-.input-group-outer {
-    background: var(--input-bg);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-lg);
-    padding: var(--space-xs);
-    margin-bottom: var(--space-xl);
-    transition: border-color var(--speed);
-}
-
-.input-group-outer:focus-within {
-    border-color: var(--accent-solid);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-}
-
-.input-group-inner {
-    border-radius: var(--radius-md);
-    padding: 10px 14px;
-}
-
-.input-group-inner label {
-    display: block;
-    font-size: var(--label-size);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: var(--label-tracking);
-    color: var(--text-muted);
-    margin-bottom: var(--space-xs);
-}
-
+/* Password field wrapper IS the single input surface (no nested input border/glow) */
 .password-field-wrapper {
     display: flex;
     align-items: center;
-    gap: var(--space-sm);
+    gap: var(--space-xs);
+    width: 100%;
+    height: 42px;
+    background: var(--input-bg);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 0 4px 0 13px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
-.password-field-wrapper input {
+.password-field-wrapper:focus-within {
+    border-color: var(--accent-solid);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 2px var(--accent-solid);
+}
+
+.password-field-wrapper input,
+.password-field-wrapper input:focus,
+.password-field-wrapper input:focus-visible {
     flex-grow: 1;
+    height: 100%;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    padding: 0;
 }
 
-/* Icon-only controls share a 40px hit target (≥12px padding rule) */
+/* interior.dev Floating Label: reserves top 20px slot; label lifts on transform only */
+.floating-field {
+    position: relative;
+    padding-top: 20px;
+}
+
+.lock-floating-field {
+    margin-bottom: var(--space-xl);
+}
+
+.floating-field > input,
+.floating-field > select {
+    height: 42px;
+    padding: 0 13px;
+}
+
+.floating-field > textarea {
+    padding: 10px 13px;
+}
+
+.floating-field > .floating-label {
+    position: absolute;
+    left: 13px;
+    top: 32px;
+    display: block;
+    cursor: text;
+    user-select: none;
+    pointer-events: none;
+    font-size: 0.84rem;
+    font-weight: 500;
+    line-height: 18px;
+    text-transform: none;
+    letter-spacing: -0.01em;
+    color: var(--text-muted);
+    transform-origin: 0 0;
+    will-change: transform;
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), color 0.16s ease;
+}
+
+/* Hide placeholder while label rests inside the empty unfocused input */
+.floating-field:not(:focus-within):not(.is-raised) input::placeholder,
+.floating-field:not(:focus-within):not(.is-raised) textarea::placeholder {
+    color: transparent;
+}
+
+.floating-field input:focus::placeholder,
+.floating-field textarea:focus::placeholder {
+    color: var(--text-muted);
+    opacity: 0.55;
+    transition: opacity 0.18s ease;
+}
+
+/* Raise label into the reserved top slot when focused or filled */
+.floating-field:focus-within > .floating-label,
+.floating-field.is-raised > .floating-label {
+    transform: translate3d(-12px, -31px, 0) scale(0.88);
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.floating-field:focus-within > .floating-label {
+    color: var(--accent-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .floating-field > .floating-label {
+        transition: none;
+    }
+}
+
+/* Icon-only controls share a 36px hit target inside 42px input bar */
 .btn-toggle-visibility, .btn-dice, .btn-icon-action {
     background: none;
     border: none;
@@ -538,9 +611,9 @@ input[type="password"],
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
-    min-height: 40px;
-    border-radius: var(--radius-md);
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: var(--radius-sm);
     transition: color var(--speed), background-color var(--speed);
 }
 
@@ -551,6 +624,11 @@ input[type="password"],
 
 .btn-dice {
     font-size: 1.25rem;
+    min-width: 42px;
+    min-height: 42px;
+    border: 1px solid var(--border-subtle);
+    background: var(--input-bg);
+    border-radius: var(--radius-md);
 }
 
 /* ==========================================================================
@@ -1067,24 +1145,40 @@ input[type="password"],
     background: var(--input-bg);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: var(--space-xs);
-    transition: border-color var(--speed), box-shadow var(--speed);
+    padding: 0 14px;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .search-box-outer:focus-within {
     border-color: var(--accent-solid);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 2px var(--accent-solid);
 }
 
 .search-box-inner {
     display: flex;
     align-items: center;
     gap: var(--space-sm);
-    padding: var(--space-sm) var(--space-md);
+    width: 100%;
+    padding: 0;
+}
+
+.search-box-inner input,
+.search-box-inner input:focus,
+.search-box-inner input:focus-visible {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    padding: 9px 0;
 }
 
 .search-icon {
     color: var(--text-muted);
+    flex-shrink: 0;
 }
 
 .select-wrapper-outer {
@@ -1092,24 +1186,32 @@ input[type="password"],
     background: var(--input-bg);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    padding: var(--space-xs);
-    transition: border-color var(--speed), box-shadow var(--speed);
+    padding: 0 14px;
+    min-height: 42px;
+    display: flex;
+    align-items: center;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+    transition: border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .select-wrapper-outer:focus-within {
     border-color: var(--accent-solid);
-    box-shadow: 0 0 0 3px var(--accent-soft);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 0 0 2px var(--accent-solid);
 }
 
 .select-wrapper-inner {
-    padding: var(--space-sm) var(--space-md);
+    width: 100%;
+    padding: 0;
 }
 
-.select-wrapper-inner select {
+.select-wrapper-inner select,
+.select-wrapper-inner select:focus,
+.select-wrapper-inner select:focus-visible {
     background: transparent;
     border: none;
-    padding: 0;
+    padding: 9px 0;
     box-shadow: none;
+    outline: none;
     cursor: pointer;
     font-weight: 500;
 }
@@ -1230,6 +1332,51 @@ input[type="password"],
     color: var(--text-main);
     word-break: break-all;
     user-select: all;
+}
+
+.item-totp-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    margin-top: var(--space-xs);
+}
+
+.totp-code-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-sm);
+    padding: 3px 10px;
+    background: var(--accent-soft);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--accent-solid);
+    cursor: pointer;
+    transition: background-color var(--speed), border-color var(--speed);
+}
+
+.totp-code-btn:hover {
+    border-color: var(--accent-solid);
+    background: var(--hover-bg);
+}
+
+.totp-code-text {
+    font-family: var(--font-family-mono);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.totp-timer-pill {
+    font-family: var(--font-family-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    min-width: 24px;
+    text-align: right;
+}
+
+.totp-timer-pill.expiring {
+    color: var(--indicator-alert);
 }
 
 .item-security-row {
@@ -1557,7 +1704,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ==========================================================================
-   Modals
+   Modals (Top-anchored Y position + interior.dev Segmented Control)
    ========================================================================== */
 .modal-backdrop {
     display: none;
@@ -1569,16 +1716,18 @@ input[type="range"]::-moz-range-thumb {
     background: rgba(0, 0, 0, 0.55);
     z-index: 1000;
     justify-content: center;
-    align-items: center;
-    padding: var(--space-xl);
+    align-items: flex-start;
+    padding: 6vh var(--space-xl) var(--space-xl);
+    overflow-y: auto;
 }
 
 .modal-container-outer {
     width: 100%;
     max-width: 520px;
-    transform: scale(0.95);
+    transform: translateY(-6px) scale(0.98);
+    transform-origin: top center;
     opacity: 0;
-    transition: transform 0.4s var(--ease-out), opacity 0.4s var(--ease-out);
+    transition: transform 0.3s var(--ease-out), opacity 0.3s var(--ease-out);
 }
 
 .modal-backdrop.active {
@@ -1586,7 +1735,7 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .modal-backdrop.active .modal-container-outer {
-    transform: scale(1);
+    transform: translateY(0) scale(1);
     opacity: 1;
 }
 
@@ -1595,14 +1744,121 @@ input[type="range"]::-moz-range-thumb {
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--text-main);
-    margin-bottom: var(--space-xl);
+    margin-bottom: var(--space-lg);
 }
 
 .modal-form {
     display: flex;
     flex-direction: column;
-    gap: var(--space-lg);
+    gap: 14px;
     margin-bottom: var(--space-xl);
+}
+
+/* interior.dev Segmented Control: sliding thumb + clipped counter-translated label inversion */
+.segmented-control {
+    position: relative;
+    display: block;
+    user-select: none;
+    border-radius: 9px;
+    border: 1px solid var(--border-subtle);
+    background: var(--canvas-bg);
+    padding: 3px;
+}
+
+.segmented-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    touch-action: manipulation;
+}
+
+.seg-label {
+    padding: 7px 10px;
+    text-align: center;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 18px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    pointer-events: none;
+    color: var(--text-muted);
+}
+
+.seg-thumb {
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 25%;
+    overflow: hidden;
+    border-radius: 6px;
+    background: var(--input-bg);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.08);
+    transform: translate3d(0%, 0, 0);
+    will-change: transform;
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+:root[data-theme="editorial-light"] .seg-thumb {
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.seg-thumb-inner {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 400%;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    transform: translate3d(0%, 0, 0);
+    will-change: transform;
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.seg-label-active {
+    color: var(--text-main);
+    font-weight: 600;
+}
+
+.seg-hit-grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.entry-type-btn {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+}
+
+.entry-type-btn:focus-visible {
+    box-shadow: inset 0 0 0 1.5px var(--accent-solid);
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .seg-thumb,
+    .seg-thumb-inner {
+        transition: none;
+    }
 }
 
 .input-row-grid {
@@ -1614,25 +1870,18 @@ input[type="range"]::-moz-range-thumb {
 .modal-input-field {
     display: flex;
     flex-direction: column;
+}
+
+.modal-input-field:not(.floating-field) {
     gap: var(--space-xs);
 }
 
-.modal-input-field label {
+.modal-input-field:not(.floating-field) label {
     font-size: var(--label-size);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: var(--label-tracking);
     color: var(--text-muted);
-}
-
-.modal-input-field input,
-.modal-input-field select,
-.modal-input-field textarea {
-    background: var(--input-bg);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: 10px 14px;
-    font-size: 0.9rem;
 }
 
 .input-action-inline {
@@ -1643,17 +1892,6 @@ input[type="range"]::-moz-range-thumb {
 
 .input-action-inline .password-field-wrapper {
     flex-grow: 1;
-    background: var(--input-bg);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-md);
-    padding: var(--space-xs);
-}
-
-.input-action-inline .password-field-wrapper input {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 8px 0 8px var(--space-sm);
 }
 
 .modal-strength-container {
@@ -1668,6 +1906,60 @@ input[type="range"]::-moz-range-thumb {
 .strength-tiny-text {
     font-size: 0.68rem;
     color: var(--text-muted);
+}
+
+.modal-pass-meta-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+    margin-top: 4px;
+}
+
+.modal-gen-options {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.modal-gen-pill {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.modal-gen-pill input[type="checkbox"] {
+    display: none;
+}
+
+.modal-gen-pill span {
+    font-family: var(--font-family-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: var(--input-bg);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-muted);
+    transition: background-color var(--speed), color var(--speed), border-color var(--speed);
+}
+
+.modal-gen-pill input[type="checkbox"]:checked + span {
+    background: var(--accent-soft);
+    border-color: var(--accent-solid);
+    color: var(--accent-solid);
+}
+
+.modal-input-field .modal-gen-len-input {
+    width: 46px;
+    padding: 2px 4px;
+    font-family: var(--font-family-mono);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-align: center;
+    border-radius: var(--radius-sm);
 }
 
 .modal-footer {
@@ -1892,19 +2184,17 @@ input[type="range"]::-moz-range-thumb {
                 <div id="initialize-prompt" class="auth-flow hidden">
                     <p class="flow-desc">Welcome! Set a strong Master Password to create your new encrypted vault.</p>
                     
-                    <div class="input-group-outer">
-                        <div class="input-group-inner">
-                            <label for="new-master-pw">Set Master Password</label>
-                            <div class="password-field-wrapper">
-                                <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
-                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')" aria-label="Toggle password visibility">
-                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="floating-field lock-floating-field">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="new-master-pw" placeholder="Min. 8 characters...">
+                            <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('new-master-pw')" aria-label="Toggle password visibility">
+                                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
                         </div>
+                        <label class="floating-label" for="new-master-pw">Set Master Password</label>
                     </div>
 
                     <div class="btn-group-vertical">
@@ -1931,19 +2221,17 @@ input[type="range"]::-moz-range-thumb {
                 <div id="unlock-prompt" class="auth-flow hidden">
                     <p class="flow-desc">Welcome back! Enter your Master Password to decrypt and access your credentials.</p>
                     
-                    <div class="input-group-outer">
-                        <div class="input-group-inner">
-                            <label for="master-pw">Master Password</label>
-                            <div class="password-field-wrapper">
-                                <input type="password" id="master-pw" placeholder="Enter password to unlock...">
-                                <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('master-pw')" aria-label="Toggle password visibility">
-                                    <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </button>
-                            </div>
+                    <div class="floating-field lock-floating-field">
+                        <div class="password-field-wrapper">
+                            <input type="password" id="master-pw" placeholder="Enter password to unlock...">
+                            <button type="button" class="btn-toggle-visibility" onclick="togglePasswordInput('master-pw')" aria-label="Toggle password visibility">
+                                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
                         </div>
+                        <label class="floating-label" for="master-pw">Master Password</label>
                     </div>
 
                     <div class="btn-group-vertical">
@@ -2033,13 +2321,6 @@ input[type="range"]::-moz-range-thumb {
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
                 <span>Credentials</span>
-            </div>
-            <div class="tab" id="tab-btn-generator" onclick="switchTab('generator')">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <polyline points="16 18 22 12 16 6"/>
-                    <polyline points="8 6 2 12 8 18"/>
-                </svg>
-                <span>Generator</span>
             </div>
             <div class="tab" id="tab-btn-settings" onclick="switchTab('settings')">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -2154,75 +2435,7 @@ input[type="range"]::-moz-range-thumb {
                 </div>
             </div>
 
-            <!-- 2. GENERATOR VIEW -->
-            <div id="tab-generator" class="tab-pane">
-                <div class="generator-container-outer">
-                    <div class="generator-container-inner">
-                        <div class="generated-display-panel">
-                            <div class="result-box" id="gen-result">••••••••••••••••</div>
-                            <div class="display-actions">
-                                <button type="button" class="btn-icon-action" onclick="copyGeneratedPassword()" title="Copy Generated Password">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                                    </svg>
-                                </button>
-                                <button type="button" class="btn-icon-action" onclick="generatePassword()" title="Generate New">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Entropy / Strength indicator -->
-                        <div class="generator-strength-bar">
-                            <div id="gen-strength-fill" class="strength-bar-fill strength-muted"></div>
-                        </div>
-                        <div class="strength-label-text">
-                            Strength: <span id="gen-strength-label">None</span>
-                        </div>
-
-                        <div class="generator-options">
-                            <div class="option-slider-row">
-                                <div class="option-label-info">
-                                    <span>Password Length</span>
-                                    <strong id="len-val">16</strong>
-                                </div>
-                                <input type="range" id="gen-length" min="8" max="64" value="16" oninput="document.getElementById('len-val').innerText = this.value; generatePassword();">
-                            </div>
-
-                            <div class="option-grid">
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-upper" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Uppercase (A-Z)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-lower" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Lowercase (a-z)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-numbers" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Numbers (0-9)</span>
-                                </label>
-
-                                <label class="checkbox-option">
-                                    <input type="checkbox" id="gen-symbols" checked onchange="generatePassword()">
-                                    <span class="custom-checkmark"></span>
-                                    <span>Special Symbols (!@#$)</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 3. SETTINGS VIEW -->
+            <!-- 2. SETTINGS VIEW -->
             <div id="tab-settings" class="tab-pane">
                 <div class="settings-sections">
                     <!-- Session & Security -->
@@ -2291,7 +2504,7 @@ input[type="range"]::-moz-range-thumb {
                     <div class="settings-card-outer">
                         <div class="settings-card-inner">
                             <h3>Import Records</h3>
-                            <p class="settings-desc">Import CSV or JSON files from Bitwarden, LastPass, or generic structures.</p>
+                            <p class="settings-desc">Import CSV, JSON, or KeePass XML (.xml) files from Bitwarden, KeePassXC, LastPass, or generic structures.</p>
                             
                             <div class="settings-action-box">
                                 <button class="btn-secondary" onclick="document.getElementById('import-input').click()">
@@ -2301,9 +2514,9 @@ input[type="range"]::-moz-range-thumb {
                                         <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
                                         <polyline points="16 16 12 12 8 16"/>
                                     </svg>
-                                    <span>Upload JSON or CSV</span>
+                                    <span>Upload JSON, CSV, or XML</span>
                                 </button>
-                                <input type="file" id="import-input" class="hidden" accept=".csv,.json" onchange="handleUniversalImport(event)">
+                                <input type="file" id="import-input" class="hidden" accept=".csv,.json,.xml" onchange="handleUniversalImport(event)">
                             </div>
                         </div>
                     </div>
@@ -2324,18 +2537,6 @@ input[type="range"]::-moz-range-thumb {
                             </div>
                         </div>
                     </div>
-
-                    <!-- Factory Reset / Data Clear -->
-                    <div class="settings-card-outer">
-                        <div class="settings-card-inner border-alert-dim">
-                            <h3 class="text-danger">Wipe Session Data</h3>
-                            <p class="settings-desc">Clear the active volatile memory database and return to lock screen. Ensure you've downloaded/saved your file!</p>
-                            
-                            <button class="btn-danger" onclick="confirmWipeSession()">
-                                Clear Vault Session
-                            </button>
-                        </div>
-                    </div>
                 </div>
             </div>
         </main>
@@ -2349,26 +2550,50 @@ input[type="range"]::-moz-range-thumb {
             <h2 id="modal-title">Add Entry</h2>
             
             <div class="modal-form">
+                <div class="entry-type-tabs segmented-control" role="radiogroup" aria-label="Entry Type">
+                    <div class="segmented-grid">
+                        <span class="seg-label" aria-hidden="true">Login</span>
+                        <span class="seg-label" aria-hidden="true">Card</span>
+                        <span class="seg-label" aria-hidden="true">Identity</span>
+                        <span class="seg-label" aria-hidden="true">SSH Key</span>
+
+                        <div id="entry-type-thumb" class="seg-thumb" aria-hidden="true">
+                            <div id="entry-type-thumb-inner" class="seg-thumb-inner">
+                                <span class="seg-label seg-label-active">Login</span>
+                                <span class="seg-label seg-label-active">Card</span>
+                                <span class="seg-label seg-label-active">Identity</span>
+                                <span class="seg-label seg-label-active">SSH Key</span>
+                            </div>
+                        </div>
+
+                        <div class="seg-hit-grid">
+                            <button type="button" role="radio" aria-checked="true" class="entry-type-btn active" data-entry-type="login" onclick="setModalEntryType('login')"><span class="sr-only">Login</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="card" onclick="setModalEntryType('card')"><span class="sr-only">Card</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="identity" onclick="setModalEntryType('identity')"><span class="sr-only">Identity</span></button>
+                            <button type="button" role="radio" aria-checked="false" class="entry-type-btn" data-entry-type="ssh" onclick="setModalEntryType('ssh')"><span class="sr-only">SSH Key</span></button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="input-row-grid">
-                    <div class="modal-input-field">
-                        <label for="entry-category">Category</label>
+                    <div class="modal-input-field floating-field is-raised">
                         <select id="entry-category">
                         </select>
+                        <label class="floating-label" for="entry-category">Category</label>
                     </div>
 
-                    <div class="modal-input-field">
-                        <label for="entry-service">Service Name / Website</label>
+                    <div class="modal-input-field floating-field">
                         <input type="text" id="entry-service" placeholder="e.g. Google, Amazon...">
+                        <label id="label-entry-service" class="floating-label" for="entry-service">Service Name / Website</label>
                     </div>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-user">Username / Email</label>
+                <div class="modal-input-field floating-field">
                     <input type="text" id="entry-user" placeholder="e.g. email@domain.com">
+                    <label id="label-entry-user" class="floating-label" for="entry-user">Username / Email</label>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-pass">Password</label>
+                <div class="modal-input-field floating-field">
                     <div class="input-action-inline">
                         <div class="password-field-wrapper">
                             <input type="password" id="entry-pass" oninput="analyzeEntryPasswordStrength(this.value)">
@@ -2379,7 +2604,7 @@ input[type="range"]::-moz-range-thumb {
                                 </svg>
                             </button>
                         </div>
-                        <button type="button" class="btn-dice" onclick="fillGeneratedPass()" title="Generate Random Password" aria-label="Generate random password">
+                        <button type="button" id="btn-dice-pass" class="btn-dice" onclick="fillGeneratedPass()" title="Generate Random Password" aria-label="Generate random password">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                                 <rect x="3" y="3" width="18" height="18" rx="4"/>
                                 <circle cx="8.5" cy="8.5" r="1.2" fill="currentColor" stroke="none"/>
@@ -2389,21 +2614,49 @@ input[type="range"]::-moz-range-thumb {
                             </svg>
                         </button>
                     </div>
-                    <!-- Strength bar inside modal -->
-                    <div class="modal-strength-container">
-                        <div id="modal-strength-fill" class="strength-bar-fill strength-muted"></div>
+                    <label id="label-entry-pass" class="floating-label" for="entry-pass">Password</label>
+                    <!-- Strength bar inside modal (Login entries only) -->
+                    <div id="modal-pass-strength-section">
+                        <div class="modal-strength-container">
+                            <div id="modal-strength-fill" class="strength-bar-fill strength-muted"></div>
+                        </div>
+                        <div class="modal-pass-meta-row">
+                            <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
+                            <div class="modal-gen-options" title="Random generator options for the Dice button">
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-upper" checked onchange="handleModalGenOptionChange()"><span>A-Z</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-lower" checked onchange="handleModalGenOptionChange()"><span>a-z</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-numbers" checked onchange="handleModalGenOptionChange()"><span>0-9</span></label>
+                                <label class="modal-gen-pill"><input type="checkbox" id="modal-gen-symbols" checked onchange="handleModalGenOptionChange()"><span>!@#$</span></label>
+                                <input type="number" id="modal-gen-length" class="modal-gen-len-input" min="8" max="64" value="16" title="Generated password length (8-64)" onchange="handleModalGenOptionChange()">
+                            </div>
+                        </div>
                     </div>
-                    <span class="strength-tiny-text">Strength: <strong id="modal-strength-label">None</strong></span>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-tags">Tags (Optional, comma-separated)</label>
+                <div id="modal-card-extra" class="input-row-grid hidden">
+                    <div class="modal-input-field floating-field">
+                        <input type="text" id="entry-card-expiry" placeholder="e.g. 08/29" maxlength="7">
+                        <label class="floating-label" for="entry-card-expiry">Expiry (MM/YY)</label>
+                    </div>
+                    <div class="modal-input-field floating-field">
+                        <input type="password" id="entry-card-cvv" placeholder="e.g. 123" maxlength="6">
+                        <label class="floating-label" for="entry-card-cvv">CVV / Security Code</label>
+                    </div>
+                </div>
+
+                <div id="modal-totp-section" class="modal-input-field floating-field">
+                    <input type="text" id="entry-totp" placeholder="e.g. JBSWY3DPEHPK3PXP or otpauth://totp/...">
+                    <label class="floating-label" for="entry-totp">TOTP Secret / otpauth:// URI (Optional 2FA)</label>
+                </div>
+
+                <div class="modal-input-field floating-field">
                     <input type="text" id="entry-tags" placeholder="e.g. work, email, critical">
+                    <label class="floating-label" for="entry-tags">Tags (Optional, comma-separated)</label>
                 </div>
 
-                <div class="modal-input-field">
-                    <label for="entry-notes">Notes (Optional)</label>
+                <div class="modal-input-field floating-field">
                     <textarea id="entry-notes" rows="3" placeholder="API keys, secret questions, URLs..."></textarea>
+                    <label class="floating-label" for="entry-notes">Notes (Optional)</label>
                 </div>
             </div>
 
@@ -2443,8 +2696,125 @@ let activeDashboardFilter = null; // 'weak', 'reused', 'vulnerable', or null
 // Auto-lock activity tracking
 let lastActivityTime = Date.now();
 let autoLockInterval = null;
+let totpRefreshInterval = null;
 
 // --- Cryptographic & Utility Functions ---
+
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+/**
+ * Decodes an RFC 4648 Base32 string into a Uint8Array.
+ * Ignores spaces, hyphens, and padding ('='). Throws on invalid characters.
+ */
+function base32ToUint8(input) {
+    if (!input || typeof input !== 'string') {
+        throw new Error('Base32 secret is empty');
+    }
+    const clean = input.replace(/[\s\-=]+/g, '').toUpperCase();
+    if (!clean.length) {
+        throw new Error('Base32 secret is empty');
+    }
+
+    const out = new Uint8Array(Math.floor((clean.length * 5) / 8));
+    let bits = 0;
+    let value = 0;
+    let index = 0;
+
+    for (let i = 0; i < clean.length; i++) {
+        const idx = BASE32_ALPHABET.indexOf(clean[i]);
+        if (idx === -1) {
+            throw new Error(`Invalid Base32 character: ${clean[i]}`);
+        }
+        value = (value << 5) | idx;
+        bits += 5;
+        if (bits >= 8) {
+            bits -= 8;
+            out[index++] = (value >>> bits) & 0xff;
+        }
+    }
+    return out;
+}
+
+/**
+ * Parses a raw Base32 secret or an otpauth://totp/... URI into TOTP parameters.
+ */
+function parseTotpInput(input) {
+    if (!input || typeof input !== 'string') {
+        throw new Error('TOTP input is empty');
+    }
+    const trimmed = input.trim();
+    if (!trimmed) {
+        throw new Error('TOTP input is empty');
+    }
+
+    if (/^otpauth:\/\//i.test(trimmed)) {
+        let url;
+        try {
+            url = new URL(trimmed);
+        } catch {
+            throw new Error('Malformed otpauth:// URI');
+        }
+        const secret = url.searchParams.get('secret') || '';
+        const digitsParam = parseInt(url.searchParams.get('digits') || '6', 10);
+        const periodParam = parseInt(url.searchParams.get('period') || '30', 10);
+        const rawAlg = (url.searchParams.get('algorithm') || 'SHA1').toUpperCase().replace('-', '');
+
+        const algMap = { SHA1: 'SHA-1', SHA256: 'SHA-256', SHA512: 'SHA-512' };
+        const algorithm = algMap[rawAlg] || 'SHA-1';
+        const digits = (digitsParam === 6 || digitsParam === 8) ? digitsParam : 6;
+        const period = periodParam > 0 ? periodParam : 30;
+
+        base32ToUint8(secret);
+        return { secret, digits, period, algorithm };
+    }
+
+    base32ToUint8(trimmed);
+    return { secret: trimmed, digits: 6, period: 30, algorithm: 'SHA-1' };
+}
+
+/**
+ * Generates an RFC 6238 TOTP code using Web Crypto HMAC.
+ */
+async function generateTOTP(secretInput, timestampMs = Date.now()) {
+    const { secret, digits, period, algorithm } = parseTotpInput(secretInput);
+    const keyBytes = base32ToUint8(secret);
+
+    const epochSeconds = Math.floor(timestampMs / 1000);
+    const counter = Math.floor(epochSeconds / period);
+    const remaining = period - (epochSeconds % period);
+
+    const counterBytes = new Uint8Array(8);
+    const high = Math.floor(counter / 0x100000000);
+    const low = counter >>> 0;
+    counterBytes[0] = (high >>> 24) & 0xff;
+    counterBytes[1] = (high >>> 16) & 0xff;
+    counterBytes[2] = (high >>> 8) & 0xff;
+    counterBytes[3] = high & 0xff;
+    counterBytes[4] = (low >>> 24) & 0xff;
+    counterBytes[5] = (low >>> 16) & 0xff;
+    counterBytes[6] = (low >>> 8) & 0xff;
+    counterBytes[7] = low & 0xff;
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: { name: algorithm } },
+        false,
+        ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, counterBytes);
+    const hmac = new Uint8Array(sig);
+
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary =
+        ((hmac[offset] & 0x7f) << 24) |
+        ((hmac[offset + 1] & 0xff) << 16) |
+        ((hmac[offset + 2] & 0xff) << 8) |
+        (hmac[offset + 3] & 0xff);
+
+    const code = (binary % (10 ** digits)).toString().padStart(digits, '0');
+    return { code, remaining, period };
+}
 
 /**
  * Converts a Uint8Array to a Base64 string.
@@ -2543,46 +2913,194 @@ async function decrypt(encryptedDataBase64, ivBase64, key) {
 
 // --- Security & Strength Assessment Functions ---
 
+// Compact high-frequency leaked password stems for offline pattern scoring
+const COMMON_PASSWORD_STEMS = [
+    'password', 'qwerty', 'asdfgh', 'zxcvbn', 'admin', 'welcome', 'letmein',
+    'monkey', 'dragon', 'master', 'login', 'princess', 'sunshine', 'football',
+    'baseball', 'iloveyou', 'trustno', 'superman', 'batman', 'shadow', 'michael',
+    'charlie', 'andrew', 'robert', 'thomas', 'daniel', 'matthew', 'joshua',
+    'jessica', 'ashley', 'amanda', 'nicole', 'secret', 'autumn', 'winter',
+    'summer', 'spring', 'access', 'computer', 'internet', 'service', 'account',
+    'freedom', 'whatever', 'nothing', 'forever', 'killer', 'pepper', 'ginger',
+    'bailey', 'buster', 'harley', 'hunter', 'ranger', 'soccer', 'hockey',
+    'silver', 'matrix', 'falcon', 'wizard', 'knight', 'viking', 'crypto',
+    'bitcoin', 'google', 'github', 'amazon', 'apple'
+];
+
+const SEQUENCE_ROWS = [
+    'abcdefghijklmnopqrstuvwxyz',
+    '01234567890',
+    'qwertyuiop',
+    'asdfghjkl',
+    'zxcvbnm'
+];
+
+const LEET_MAP = {
+    '@': 'a', '4': 'a', '0': 'o', '1': 'i', '!': 'i',
+    '3': 'e', '$': 's', '5': 's', '7': 't'
+};
+
 /**
- * Calculates entropy-based strength for a password.
+ * Normalizes common leetspeak substitutions to lowercase ASCII for dictionary matching.
  */
-function calculateEntropy(password) {
-    if (!password) return 0;
+function normalizeLeet(str) {
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i].toLowerCase();
+        out += LEET_MAP[ch] || ch;
+    }
+    return out;
+}
+
+/**
+ * Evaluates effective password entropy (in bits) by discounting predictable patterns:
+ * dictionary stems (including l33t), repeated characters, keyboard/alphanumeric sequences, and years.
+ */
+function analyzePasswordEntropy(password) {
+    if (!password) return { entropy: 0, warning: '' };
+
     let charsetSize = 0;
     if (/[a-z]/.test(password)) charsetSize += 26;
     if (/[A-Z]/.test(password)) charsetSize += 26;
     if (/[0-9]/.test(password)) charsetSize += 10;
     if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
-    
-    if (charsetSize === 0) return 0;
-    return Math.round(password.length * Math.log2(charsetSize));
+    if (charsetSize === 0) return { entropy: 0, warning: '' };
+
+    const bitsPerChar = Math.log2(charsetSize);
+    const len = password.length;
+    const discounted = new Uint8Array(len);
+    const lower = password.toLowerCase();
+    const leet = normalizeLeet(password);
+
+    let patternBits = 0;
+    let warning = '';
+
+    // 1. Dictionary & l33tspeak stems
+    for (const stem of COMMON_PASSWORD_STEMS) {
+        for (const source of [lower, leet]) {
+            let pos = source.indexOf(stem);
+            while (pos !== -1) {
+                let overlap = false;
+                for (let i = pos; i < pos + stem.length; i++) {
+                    if (discounted[i]) { overlap = true; break; }
+                }
+                if (!overlap) {
+                    for (let i = pos; i < pos + stem.length; i++) discounted[i] = 1;
+                    const rawSlice = password.slice(pos, pos + stem.length);
+                    const hasUpper = /[A-Z]/.test(rawSlice);
+                    const hasLeet = lower.slice(pos, pos + stem.length) !== leet.slice(pos, pos + stem.length);
+                    patternBits += 10 + (hasUpper ? 1 : 0) + (hasLeet ? 2 : 0);
+                    if (!warning) warning = 'Common word pattern';
+                }
+                pos = source.indexOf(stem, pos + 1);
+            }
+        }
+    }
+
+    // 2. Repeated character runs (3+ identical chars, e.g. "aaaa", "1111")
+    for (let i = 0; i < len;) {
+        let j = i + 1;
+        while (j < len && password[j] === password[i]) j++;
+        if (j - i >= 3) {
+            let uncounted = 0;
+            for (let k = i; k < j; k++) {
+                if (!discounted[k]) { discounted[k] = 1; uncounted++; }
+            }
+            if (uncounted > 0) {
+                patternBits += bitsPerChar + 1.5;
+                if (!warning) warning = 'Repeated characters';
+            }
+        }
+        i = j;
+    }
+
+    // 3. Keyboard & alphanumeric sequences (3+ chars forward or reverse, e.g. "12345", "qwerty")
+    for (let i = 0; i <= len - 3; i++) {
+        if (discounted[i] && discounted[i + 1] && discounted[i + 2]) continue;
+        let maxSeq = 0;
+        for (const row of SEQUENCE_ROWS) {
+            const rev = row.split('').reverse().join('');
+            for (let subLen = len - i; subLen >= 3; subLen--) {
+                const sub = lower.slice(i, i + subLen);
+                if (row.includes(sub) || rev.includes(sub)) {
+                    if (subLen > maxSeq) maxSeq = subLen;
+                    break;
+                }
+            }
+        }
+        if (maxSeq >= 3) {
+            for (let k = i; k < i + maxSeq; k++) discounted[k] = 1;
+            patternBits += 4;
+            if (!warning) warning = 'Sequential pattern';
+            i += maxSeq - 1;
+        }
+    }
+
+    // 4. 4-digit years (1900-2099)
+    const yearRegex = /(?:19|20)\d{2}/g;
+    let match;
+    while ((match = yearRegex.exec(password)) !== null) {
+        const start = match.index;
+        if (!discounted[start] && !discounted[start + 1] && !discounted[start + 2] && !discounted[start + 3]) {
+            for (let k = start; k < start + 4; k++) discounted[k] = 1;
+            patternBits += 6.5;
+            if (!warning) warning = 'Year pattern';
+        }
+    }
+
+    // 5. Remaining unpredictable characters get full charset entropy
+    let randomChars = 0;
+    for (let i = 0; i < len; i++) {
+        if (!discounted[i]) randomChars++;
+    }
+
+    const entropy = Math.round(patternBits + randomChars * bitsPerChar);
+    return { entropy, warning };
+}
+
+/**
+ * Calculates pattern-adjusted effective entropy (in bits) for a password.
+ */
+function calculateEntropy(password) {
+    return analyzePasswordEntropy(password).entropy;
 }
 
 /**
  * Returns strength classification object mapped to semantic theme tokens (danger, warning, success).
  */
 function assessPasswordStrength(password) {
-    if (!password) return { score: 0, label: 'None', token: 'muted' };
-    if (password.length < 8) return { score: 1, label: 'Weak', token: 'danger' };
-    
-    const entropy = calculateEntropy(password);
-    
-    if (entropy < 40 || password.length < 10) {
-        return { score: 1, label: 'Weak', token: 'danger' };
-    } else if (entropy < 70 || password.length < 14) {
-        return { score: 2, label: 'Medium', token: 'warning' };
+    if (!password) return { score: 0, label: 'None', token: 'muted', entropy: 0, warning: '' };
+    const { entropy, warning } = analyzePasswordEntropy(password);
+
+    if (password.length < 8 || entropy < 42 || (password.length < 10 && entropy < 52)) {
+        return {
+            score: 1,
+            label: 'Weak',
+            token: 'danger',
+            entropy,
+            warning: warning || (password.length < 8 ? 'Too short (< 8 chars)' : '')
+        };
+    } else if (entropy < 68 || (password.length < 12 && entropy < 75)) {
+        return { score: 2, label: 'Medium', token: 'warning', entropy, warning };
     } else {
-        return { score: 3, label: 'Strong', token: 'success' };
+        return { score: 3, label: 'Strong', token: 'success', entropy, warning: '' };
     }
 }
 
 /**
- * Returns a Set of passwords that appear more than once in the active vault.
+ * Returns true if the entry is a standard login record (default when type is omitted).
+ */
+function isLoginEntry(item) {
+    return !item || !item.type || item.type === 'login';
+}
+
+/**
+ * Returns a Set of passwords that appear more than once among login entries in the active vault.
  */
 function getReusedPasswordSet() {
     const counts = new Map();
     vaultData.forEach(item => {
-        if (item.pass) {
+        if (isLoginEntry(item) && item.pass) {
             counts.set(item.pass, (counts.get(item.pass) || 0) + 1);
         }
     });
@@ -2719,11 +3237,14 @@ function lockVault() {
     
     // Stop intervals
     clearInterval(autoLockInterval);
+    clearInterval(totpRefreshInterval);
+    totpRefreshInterval = null;
     clearTimeout(clipboardClearTimer);
     
     const progressBar = document.getElementById('auto-lock-progressbar');
     if (progressBar) progressBar.style.transform = 'scaleX(0)';
 
+    syncFloatingLabels();
     checkSavedVault();
 }
 
@@ -2807,13 +3328,6 @@ function switchTab(tab) {
     const tabPane = document.getElementById(`tab-${tab}`);
     if (tabBtn) tabBtn.classList.add('active');
     if (tabPane) tabPane.classList.add('active');
-    
-    if (tab === 'generator') {
-        const genResult = document.getElementById('gen-result');
-        if (!genResult || genResult.innerText === "Select options") {
-            generatePassword();
-        }
-    }
 }
 
 // --- Dashboard & Metrics Visualizer ---
@@ -2830,6 +3344,7 @@ function renderDashboard() {
     let vulnerable = 0;
     
     vaultData.forEach(item => {
+        if (!isLoginEntry(item)) return;
         const rating = assessPasswordStrength(item.pass);
         if (rating.label === 'Weak') weak++;
         if (item.pass.length < 12) vulnerable++;
@@ -2906,6 +3421,117 @@ function updateFilterBarUI() {
 // --- List View Rendering ---
 
 /**
+ * Formats a numeric OTP code with a middle space for readability (e.g. "123 456").
+ */
+function formatTotpDisplay(code) {
+    if (!code) return '--- ---';
+    const mid = Math.floor(code.length / 2);
+    return `${code.slice(0, mid)} ${code.slice(mid)}`;
+}
+
+/**
+ * Refreshes all visible TOTP badges in the rendered vault list.
+ */
+async function refreshVisibleTotpBadges() {
+    if (typeof document === 'undefined' || !masterKey) return;
+    const buttons = document.querySelectorAll('.totp-code-btn[data-totp-secret]');
+    if (buttons.length === 0) {
+        clearInterval(totpRefreshInterval);
+        totpRefreshInterval = null;
+        return;
+    }
+
+    const now = Date.now();
+    for (const btn of buttons) {
+        const secret = btn.getAttribute('data-totp-secret');
+        const codeEl = btn.querySelector('.totp-code-text');
+        const timerEl = btn.querySelector('.totp-timer-pill');
+        if (!secret || !codeEl || !timerEl) continue;
+
+        try {
+            const { code, remaining } = await generateTOTP(secret, now);
+            codeEl.innerText = formatTotpDisplay(code);
+            timerEl.innerText = `${remaining}s`;
+            timerEl.classList.toggle('expiring', remaining <= 5);
+        } catch {
+            codeEl.innerText = 'Invalid 2FA';
+            timerEl.innerText = '';
+        }
+    }
+}
+
+/**
+ * Starts or stops the 1s TOTP refresh timer depending on whether TOTP items are visible.
+ */
+function syncTotpLiveTimer() {
+    clearInterval(totpRefreshInterval);
+    totpRefreshInterval = null;
+    if (typeof document === 'undefined' || !masterKey) return;
+
+    const buttons = document.querySelectorAll('.totp-code-btn[data-totp-secret]');
+    if (buttons.length > 0) {
+        refreshVisibleTotpBadges();
+        totpRefreshInterval = setInterval(refreshVisibleTotpBadges, 1000);
+    }
+}
+
+/**
+ * Generates and copies the current TOTP code for a secret to the clipboard.
+ */
+async function copyTotpCode(secret) {
+    if (!secret) return;
+    try {
+        const { code } = await generateTOTP(secret);
+        copyCredentialPassword(code);
+    } catch {
+        alert('Invalid TOTP secret.');
+    }
+}
+
+const ENTRY_TYPE_META = {
+    login: {
+        badge: 'LOGIN',
+        secLabel: 'Login Credential',
+        serviceLabel: 'Service Name / Website',
+        servicePlaceholder: 'e.g. Google, Amazon...',
+        userLabel: 'Username / Email',
+        userPlaceholder: 'e.g. email@domain.com',
+        passLabel: 'Password',
+        notesPlaceholder: 'API keys, secret questions, URLs...'
+    },
+    card: {
+        badge: 'CARD',
+        secLabel: 'Payment Card',
+        serviceLabel: 'Card Label / Bank',
+        servicePlaceholder: 'e.g. Chase Sapphire, Corporate Visa...',
+        userLabel: 'Cardholder Name',
+        userPlaceholder: 'e.g. J. Dela Cruz',
+        passLabel: 'Card Number',
+        notesPlaceholder: 'Billing address, PIN notes, support phone...'
+    },
+    identity: {
+        badge: 'IDENTITY',
+        secLabel: 'Identity Document',
+        serviceLabel: 'Document / ID Type',
+        servicePlaceholder: 'e.g. Passport, Driver License, National ID...',
+        userLabel: 'Full Name / Holder',
+        userPlaceholder: 'e.g. Juan Dela Cruz',
+        passLabel: 'Document / ID Number',
+        notesPlaceholder: 'Issuing authority, expiry date, address...'
+    },
+    ssh: {
+        badge: 'SSH KEY',
+        secLabel: 'SSH / API Key',
+        serviceLabel: 'Host / Key Label',
+        servicePlaceholder: 'e.g. Prod Bastion, GitHub Deploy Key...',
+        userLabel: 'Username / Fingerprint / Public Key',
+        userPlaceholder: 'e.g. root@10.0.0.5 or SHA256:...',
+        passLabel: 'Private Key / Secret Token',
+        notesPlaceholder: 'Passphrase hint, port, jump host config...'
+    }
+};
+
+/**
  * Render items in vault credentials list.
  */
 function renderVault() {
@@ -2932,20 +3558,22 @@ function renderVault() {
         // Category filter
         const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
         
-        // Active Dashboard stats filters
+        // Active Dashboard stats filters (apply only to login entries)
         let matchesDashboard = true;
         if (activeDashboardFilter === 'weak') {
-            matchesDashboard = assessPasswordStrength(item.pass).label === 'Weak';
+            matchesDashboard = isLoginEntry(item) && assessPasswordStrength(item.pass).label === 'Weak';
         } else if (activeDashboardFilter === 'reused') {
-            matchesDashboard = item.pass && reusedSet.has(item.pass);
+            matchesDashboard = isLoginEntry(item) && item.pass && reusedSet.has(item.pass);
         } else if (activeDashboardFilter === 'vulnerable') {
-            matchesDashboard = item.pass.length < 12;
+            matchesDashboard = isLoginEntry(item) && item.pass.length < 12;
         }
         
         return matchesSearch && matchesCategory && matchesDashboard;
     });
 
     if (filtered.length === 0) {
+        clearInterval(totpRefreshInterval);
+        totpRefreshInterval = null;
         list.innerHTML = `
             <div class="empty-state">
                 <p>No credentials found matching filters.</p>
@@ -2955,6 +3583,9 @@ function renderVault() {
     }
     
     filtered.forEach((item, index) => {
+        const entryType = item.type && ENTRY_TYPE_META[item.type] ? item.type : 'login';
+        const typeMeta = ENTRY_TYPE_META[entryType];
+
         const outer = document.createElement('div');
         outer.className = 'vault-item-outer';
         outer.style.animationDelay = `${index * 0.05}s`;
@@ -2970,25 +3601,63 @@ function renderVault() {
         
         const h4 = document.createElement('h4');
         h4.innerText = item.service;
+        titleRow.appendChild(h4);
+
+        if (entryType !== 'login') {
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'badge-tag badge-accent';
+            typeBadge.innerText = typeMeta.badge;
+            titleRow.appendChild(typeBadge);
+        }
         
         const badge = document.createElement('span');
         badge.className = 'badge-tag';
         badge.innerText = item.category || 'General';
-        
-        titleRow.appendChild(h4);
         titleRow.appendChild(badge);
         
         const userP = document.createElement('p');
         userP.className = 'item-user-text';
-        userP.innerText = item.user || 'No username';
+        let subtitle = item.user || (entryType === 'login' ? 'No username' : '—');
+        if (entryType === 'card' && item.cardExpiry) {
+            subtitle += ` • Exp: ${item.cardExpiry}`;
+        }
+        userP.innerText = subtitle;
 
-        // Revealable password cell (mono credential value, hidden by default)
+        // Revealable secret cell (mono credential value, hidden by default)
         const passRow = document.createElement('div');
         passRow.className = 'item-pass-row hidden';
         const passText = document.createElement('span');
         passText.className = 'credential-value';
-        passText.innerText = item.pass;
+        passText.innerText = (entryType === 'card' && item.cardCvv)
+            ? `${item.pass}  (CVV: ${item.cardCvv})`
+            : item.pass;
         passRow.appendChild(passText);
+
+        // Live TOTP 2FA badge row if entry has a TOTP secret configured
+        let totpRow = null;
+        if (item.totp && entryType === 'login') {
+            totpRow = document.createElement('div');
+            totpRow.className = 'item-totp-row';
+
+            const totpBtn = document.createElement('button');
+            totpBtn.type = 'button';
+            totpBtn.className = 'totp-code-btn';
+            totpBtn.setAttribute('data-totp-secret', item.totp);
+            totpBtn.title = 'Click to copy 2FA TOTP code';
+            totpBtn.onclick = () => copyTotpCode(item.totp);
+
+            const codeSpan = document.createElement('span');
+            codeSpan.className = 'totp-code-text';
+            codeSpan.innerText = '••• •••';
+
+            const timerSpan = document.createElement('span');
+            timerSpan.className = 'totp-timer-pill';
+            timerSpan.innerText = '--s';
+
+            totpBtn.appendChild(codeSpan);
+            totpBtn.appendChild(timerSpan);
+            totpRow.appendChild(totpBtn);
+        }
 
         // Render tags if present
         if (item.tags && item.tags.length > 0) {
@@ -3007,27 +3676,38 @@ function renderVault() {
         const secRow = document.createElement('div');
         secRow.className = 'item-security-row';
         
-        const rating = assessPasswordStrength(item.pass);
-        const dot = document.createElement('span');
-        dot.className = `status-indicator-dot bg-${rating.token}`;
-        
-        const label = document.createElement('span');
-        label.className = `strength-text-label text-${rating.token}`;
-        label.innerText = rating.label;
-        
-        secRow.appendChild(dot);
-        secRow.appendChild(label);
-        
-        if (item.pass && reusedSet.has(item.pass)) {
-            const reuseLabel = document.createElement('span');
-            reuseLabel.className = 'strength-text-label strength-reuse';
-            reuseLabel.innerText = '• Reused';
-            secRow.appendChild(reuseLabel);
+        if (entryType === 'login') {
+            const rating = assessPasswordStrength(item.pass);
+            const dot = document.createElement('span');
+            dot.className = `status-indicator-dot bg-${rating.token}`;
+            
+            const label = document.createElement('span');
+            label.className = `strength-text-label text-${rating.token}`;
+            label.innerText = rating.label;
+            
+            secRow.appendChild(dot);
+            secRow.appendChild(label);
+            
+            if (item.pass && reusedSet.has(item.pass)) {
+                const reuseLabel = document.createElement('span');
+                reuseLabel.className = 'strength-text-label strength-reuse';
+                reuseLabel.innerText = '• Reused';
+                secRow.appendChild(reuseLabel);
+            }
+        } else {
+            const dot = document.createElement('span');
+            dot.className = 'status-indicator-dot online';
+            const label = document.createElement('span');
+            label.className = 'strength-text-label text-muted';
+            label.innerText = typeMeta.secLabel;
+            secRow.appendChild(dot);
+            secRow.appendChild(label);
         }
         
         info.appendChild(titleRow);
         info.appendChild(userP);
         info.appendChild(passRow);
+        if (totpRow) info.appendChild(totpRow);
         info.appendChild(secRow);
         
         // Actions
@@ -3036,15 +3716,15 @@ function renderVault() {
         
         const revealBtn = document.createElement('button');
         revealBtn.className = 'btn-action-icon btn-reveal';
-        revealBtn.title = 'Reveal Password';
-        revealBtn.setAttribute('aria-label', 'Reveal Password');
+        revealBtn.title = `Reveal ${typeMeta.passLabel}`;
+        revealBtn.setAttribute('aria-label', `Reveal ${typeMeta.passLabel}`);
         revealBtn.onclick = () => toggleEntryReveal(passRow, revealBtn);
         revealBtn.innerHTML = EYE_OPEN_SVG;
         
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn-action-icon';
-        copyBtn.title = 'Copy Password';
-        copyBtn.setAttribute('aria-label', 'Copy Password');
+        copyBtn.title = `Copy ${typeMeta.passLabel}`;
+        copyBtn.setAttribute('aria-label', `Copy ${typeMeta.passLabel}`);
         copyBtn.onclick = () => copyCredentialPassword(item.pass);
         copyBtn.innerHTML = `
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -3087,6 +3767,8 @@ function renderVault() {
         outer.appendChild(inner);
         list.appendChild(outer);
     });
+
+    syncTotpLiveTimer();
 }
 
 // --- Category & Tag Management ---
@@ -3137,15 +3819,104 @@ function handleCategoryChange(e) {
 }
 
 // --- Entry Editing & Addition Modal ---
+let modalPassWasGenerated = false;
+let currentEntryType = 'login';
+const ENTRY_TYPE_ORDER = ['login', 'card', 'identity', 'ssh'];
+
+/**
+ * Syncs the .is-raised class on all .floating-field wrappers based on whether their input/textarea has a value.
+ */
+function syncFloatingLabels() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.floating-field').forEach(wrapper => {
+        const control = wrapper.querySelector('input, select, textarea');
+        if (!control) return;
+        const isSelect = control.tagName === 'SELECT';
+        const hasVal = isSelect || (control.value && control.value.length > 0);
+        wrapper.classList.toggle('is-raised', Boolean(hasVal));
+    });
+}
+
+/**
+ * Switches the Add/Edit modal between 'login', 'card', 'identity', and 'ssh' entry types.
+ */
+function setModalEntryType(type) {
+    currentEntryType = ENTRY_TYPE_META[type] ? type : 'login';
+    const meta = ENTRY_TYPE_META[currentEntryType];
+
+    if (typeof document === 'undefined') return;
+
+    const index = Math.max(0, ENTRY_TYPE_ORDER.indexOf(currentEntryType));
+    const thumb = document.getElementById('entry-type-thumb');
+    const thumbInner = document.getElementById('entry-type-thumb-inner');
+    if (thumb) {
+        thumb.style.transform = `translate3d(${index * 100}%, 0, 0)`;
+    }
+    if (thumbInner) {
+        thumbInner.style.transform = `translate3d(${index * -25}%, 0, 0)`;
+    }
+
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-entry-type') === currentEntryType;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+
+    const serviceLabel = document.getElementById('label-entry-service');
+    const serviceInput = document.getElementById('entry-service');
+    const userLabel = document.getElementById('label-entry-user');
+    const userInput = document.getElementById('entry-user');
+    const passLabel = document.getElementById('label-entry-pass');
+    const notesInput = document.getElementById('entry-notes');
+
+    if (serviceLabel) serviceLabel.innerText = meta.serviceLabel;
+    if (serviceInput) serviceInput.placeholder = meta.servicePlaceholder;
+    if (userLabel) userLabel.innerText = meta.userLabel;
+    if (userInput) userInput.placeholder = meta.userPlaceholder;
+    if (passLabel) passLabel.innerText = meta.passLabel;
+    if (notesInput) notesInput.placeholder = meta.notesPlaceholder;
+
+    const isLogin = currentEntryType === 'login';
+    const isCard = currentEntryType === 'card';
+
+    const strengthSec = document.getElementById('modal-pass-strength-section');
+    const totpSec = document.getElementById('modal-totp-section');
+    const diceBtn = document.getElementById('btn-dice-pass');
+    const cardExtra = document.getElementById('modal-card-extra');
+
+    if (strengthSec) strengthSec.classList.toggle('hidden', !isLogin);
+    if (totpSec) totpSec.classList.toggle('hidden', !isLogin);
+    if (diceBtn) diceBtn.classList.toggle('hidden', !isLogin);
+    if (cardExtra) cardExtra.classList.toggle('hidden', !isCard);
+    syncFloatingLabels();
+}
+
+function handleModalGenOptionChange() {
+    const modalLen = document.getElementById('modal-gen-length');
+    if (modalLen) {
+        modalLen.value = Math.min(64, Math.max(8, parseInt(modalLen.value, 10) || 16));
+    }
+    if (modalPassWasGenerated) {
+        fillGeneratedPass();
+    }
+}
 
 function showAddModal() {
     currentEditId = null;
+    modalPassWasGenerated = false;
     document.getElementById('modal-title').innerText = 'Add Entry';
     populateCategorySelectors();
+    setModalEntryType('login');
     document.getElementById('entry-category').value = 'General';
     document.getElementById('entry-service').value = '';
     document.getElementById('entry-user').value = '';
     document.getElementById('entry-pass').value = '';
+    const expEl = document.getElementById('entry-card-expiry');
+    if (expEl) expEl.value = '';
+    const cvvEl = document.getElementById('entry-card-cvv');
+    if (cvvEl) cvvEl.value = '';
+    const totpEl = document.getElementById('entry-totp');
+    if (totpEl) totpEl.value = '';
     const tagsEl = document.getElementById('entry-tags');
     if (tagsEl) tagsEl.value = '';
     document.getElementById('entry-notes').value = '';
@@ -3154,6 +3925,7 @@ function showAddModal() {
     if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength('');
+    syncFloatingLabels();
     document.getElementById('modal').classList.add('active');
 }
 
@@ -3162,12 +3934,20 @@ function showEditModal(id) {
     if (!item) return;
     
     currentEditId = id;
+    modalPassWasGenerated = false;
     document.getElementById('modal-title').innerText = 'Edit Entry';
     populateCategorySelectors();
+    setModalEntryType(item.type || 'login');
     document.getElementById('entry-category').value = item.category || 'General';
     document.getElementById('entry-service').value = item.service;
     document.getElementById('entry-user').value = item.user || '';
     document.getElementById('entry-pass').value = item.pass;
+    const expEl = document.getElementById('entry-card-expiry');
+    if (expEl) expEl.value = item.cardExpiry || '';
+    const cvvEl = document.getElementById('entry-card-cvv');
+    if (cvvEl) cvvEl.value = item.cardCvv || '';
+    const totpEl = document.getElementById('entry-totp');
+    if (totpEl) totpEl.value = item.totp || '';
     const tagsEl = document.getElementById('entry-tags');
     if (tagsEl) tagsEl.value = (item.tags || []).join(', ');
     document.getElementById('entry-notes').value = item.notes || '';
@@ -3176,6 +3956,7 @@ function showEditModal(id) {
     if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength(item.pass);
+    syncFloatingLabels();
     document.getElementById('modal').classList.add('active');
 }
 
@@ -3192,50 +3973,62 @@ function analyzeEntryPasswordStrength(password) {
         fill.className = `strength-bar-fill strength-${rating.token}`;
     }
     if (label) {
-        label.innerText = rating.label;
+        label.innerText = rating.warning ? `${rating.label} (${rating.warning})` : rating.label;
         label.className = `text-${rating.token}`;
     }
 }
 
 /**
- * Handles saving password record.
+ * Handles saving credential record across all entry types.
  */
 async function saveEntry() {
+    const type = currentEntryType || 'login';
+    const meta = ENTRY_TYPE_META[type] || ENTRY_TYPE_META.login;
     const category = document.getElementById('entry-category').value;
     const service = document.getElementById('entry-service').value.trim();
     const user = document.getElementById('entry-user').value.trim();
     const pass = document.getElementById('entry-pass').value;
+    const cardExpiry = document.getElementById('entry-card-expiry') ? document.getElementById('entry-card-expiry').value.trim() : '';
+    const cardCvv = document.getElementById('entry-card-cvv') ? document.getElementById('entry-card-cvv').value.trim() : '';
+    const totp = (type === 'login' && document.getElementById('entry-totp')) ? document.getElementById('entry-totp').value.trim() : '';
     const tagsRaw = document.getElementById('entry-tags') ? document.getElementById('entry-tags').value.trim() : '';
     const notes = document.getElementById('entry-notes').value;
     
     if (!service || !pass) {
-        return alert("Service name and password are required.");
+        return alert(`${meta.serviceLabel} and ${meta.passLabel} are required.`);
+    }
+
+    if (totp) {
+        try {
+            parseTotpInput(totp);
+        } catch (err) {
+            return alert(`Invalid TOTP secret or URI: ${err.message}`);
+        }
     }
     
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : [];
+    const record = {
+        id: currentEditId !== null ? currentEditId : (Date.now() + Math.floor(Math.random() * 100)),
+        type,
+        category,
+        service,
+        user,
+        pass,
+        totp,
+        tags,
+        notes
+    };
+    if (type === 'card') {
+        if (cardExpiry) record.cardExpiry = cardExpiry;
+        if (cardCvv) record.cardCvv = cardCvv;
+    }
     
     if (currentEditId !== null) {
         const index = vaultData.findIndex(i => i.id === currentEditId);
-        vaultData[index] = { 
-            id: currentEditId, 
-            category, 
-            service, 
-            user, 
-            pass,
-            tags,
-            notes 
-        };
+        vaultData[index] = record;
         showToast("Entry updated.");
     } else {
-        vaultData.push({ 
-            id: Date.now() + Math.floor(Math.random() * 100), 
-            category, 
-            service, 
-            user, 
-            pass,
-            tags,
-            notes 
-        });
+        vaultData.push(record);
         showToast("New entry created.");
     }
     
@@ -3263,13 +4056,13 @@ async function deleteEntry(id) {
  * Generates cryptographically secure random password using rejection sampling to prevent modulo bias.
  */
 function generatePassword() {
-    const lengthInput = document.getElementById('gen-length');
-    const length = lengthInput ? parseInt(lengthInput.value) || 16 : 16;
+    const lengthInput = document.getElementById('modal-gen-length');
+    const length = lengthInput ? Math.min(64, Math.max(8, parseInt(lengthInput.value, 10) || 16)) : 16;
     
-    const incLower = document.getElementById('gen-lower')?.checked ?? true;
-    const incUpper = document.getElementById('gen-upper')?.checked ?? true;
-    const incNumbers = document.getElementById('gen-numbers')?.checked ?? true;
-    const incSymbols = document.getElementById('gen-symbols')?.checked ?? true;
+    const incLower = document.getElementById('modal-gen-lower')?.checked ?? true;
+    const incUpper = document.getElementById('modal-gen-upper')?.checked ?? true;
+    const incNumbers = document.getElementById('modal-gen-numbers')?.checked ?? true;
+    const incSymbols = document.getElementById('modal-gen-symbols')?.checked ?? true;
     
     let charset = '';
     if (incLower) charset += 'abcdefghijklmnopqrstuvwxyz';
@@ -3277,10 +4070,7 @@ function generatePassword() {
     if (incNumbers) charset += '0123456789';
     if (incSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
     
-    if (!charset) {
-        document.getElementById('gen-result').innerText = "Select options";
-        return;
-    }
+    if (!charset) return '';
     
     let generated = '';
     const maxUint32 = 0xFFFFFFFF;
@@ -3293,34 +4083,18 @@ function generatePassword() {
             generated += charset.charAt(rand[0] % charset.length);
         }
     }
-    
-    const genResult = document.getElementById('gen-result');
-    if (genResult) genResult.innerText = generated;
-    
-    const strength = assessPasswordStrength(generated);
-    const fill = document.getElementById('gen-strength-fill');
-    const label = document.getElementById('gen-strength-label');
-    
-    if (fill) fill.className = `strength-bar-fill strength-${strength.token}`;
-    if (label) {
-        label.innerText = strength.label;
-        label.className = `text-${strength.token}`;
-    }
-}
-
-function copyGeneratedPassword() {
-    const pass = document.getElementById('gen-result')?.innerText;
-    if (!pass || pass === "Select options") return;
-    copyCredentialPassword(pass);
+    return generated;
 }
 
 function fillGeneratedPass() {
-    generatePassword();
-    const pass = document.getElementById('gen-result')?.innerText;
-    if (pass && pass !== "Select options") {
-        document.getElementById('entry-pass').value = pass;
-        analyzeEntryPasswordStrength(pass);
+    const pass = generatePassword();
+    if (!pass) {
+        return alert("Select at least one character set (A-Z, a-z, 0-9, or !@#$) to generate a password.");
     }
+    modalPassWasGenerated = true;
+    document.getElementById('entry-pass').value = pass;
+    analyzeEntryPasswordStrength(pass);
+    syncFloatingLabels();
 }
 
 // --- Import & Export Mechanics ---
@@ -3335,41 +4109,189 @@ function handleUniversalImport(event) {
         handleCSVImport(file);
     } else if (extension === 'json') {
         handleJSONImport(file);
+    } else if (extension === 'xml') {
+        handleXMLImport(file);
     } else {
-        alert("Unsupported file type. SecureVault parses standard .csv or .json datasets.");
+        alert("Unsupported file type. SecureVault parses standard .csv, .json, or KeePass .xml exports.");
     }
     event.target.value = '';
+}
+
+function unescapeXmlEntities(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+
+/**
+ * Parses a KeePass 2.x / KeePassXC XML export (<KeePassFile>) into SecureVault entries.
+ * Strips <History> blocks so old password revisions are not imported as duplicate entries.
+ */
+function parseKeePassXML(xmlText) {
+    if (!xmlText || typeof xmlText !== 'string') return [];
+    const cleaned = xmlText.replace(/<History\b[^>]*>[\s\S]*?<\/History>/gi, '');
+
+    const parsed = [];
+    const groupStack = [];
+    const tokenRegex = /<Group\b[^>]*>([\s\S]*?)(?=<Group\b|<\/Group>|<Entry\b)|<\/Group>|<Entry\b[^>]*>([\s\S]*?)<\/Entry>/gi;
+
+    let match;
+    let index = 0;
+    while ((match = tokenRegex.exec(cleaned)) !== null) {
+        if (match[0].startsWith('</Group') || match[0].startsWith('</group')) {
+            groupStack.pop();
+            continue;
+        }
+        if (match[1] !== undefined) {
+            const nameMatch = match[1].match(/<Name>([\s\S]*?)<\/Name>/i);
+            const groupName = nameMatch ? unescapeXmlEntities(nameMatch[1]).trim() : '';
+            groupStack.push(groupName);
+            continue;
+        }
+        if (match[2] !== undefined) {
+            const entryBody = match[2];
+            const fields = {};
+            const strRegex = /<String>\s*<Key>([\s\S]*?)<\/Key>\s*<Value[^>]*>([\s\S]*?)<\/Value>\s*<\/String>/gi;
+            let sm;
+            while ((sm = strRegex.exec(entryBody)) !== null) {
+                const key = unescapeXmlEntities(sm[1]).trim().toLowerCase();
+                fields[key] = unescapeXmlEntities(sm[2]);
+            }
+
+            const service = (fields['title'] || fields['url'] || '').trim();
+            const user = (fields['username'] || '').trim();
+            const pass = fields['password'] || '';
+            const totp = (fields['otp'] || fields['totp seed'] || fields['totp'] || '').trim();
+            const notes = (fields['notes'] || '').trim();
+
+            const tagsMatch = entryBody.match(/<Tags>([\s\S]*?)<\/Tags>/i);
+            const tagsRaw = tagsMatch ? unescapeXmlEntities(tagsMatch[1]) : '';
+            const tags = tagsRaw ? tagsRaw.split(/[,;]/).map(t => t.trim().toLowerCase()).filter(Boolean) : [];
+
+            let category = 'General';
+            for (let i = groupStack.length - 1; i >= 0; i--) {
+                const g = groupStack[i];
+                if (g && !/^(root|database|keepass|passwords|recycle bin|trash)$/i.test(g)) {
+                    category = g;
+                    break;
+                }
+            }
+
+            if (service && pass) {
+                const entry = {
+                    id: Date.now() + index++,
+                    category,
+                    service,
+                    user,
+                    pass,
+                    tags,
+                    notes
+                };
+                if (totp) entry.totp = totp;
+                parsed.push(entry);
+            }
+        }
+    }
+    return parsed;
+}
+
+function handleXMLImport(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const imported = parseKeePassXML(e.target.result);
+            vaultData.push(...imported);
+            renderDashboard();
+            renderVault();
+            await persistEncryptedVault();
+            showToast(`Imported ${imported.length} KeePass XML entries.`);
+        } catch (err) {
+            alert("Error parsing KeePass XML file.");
+        }
+    };
+    reader.readAsText(file);
 }
 
 function parseJSONImportData(jsonString) {
     const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
     const items = Array.isArray(data) ? data : (data.items || []);
+    const folderMap = new Map();
+    if (data && Array.isArray(data.folders)) {
+        data.folders.forEach(f => {
+            if (f && f.id && f.name) {
+                folderMap.set(f.id, String(f.name).trim());
+            }
+        });
+    }
     const parsed = [];
     
     items.forEach((item, index) => {
+        let type = (typeof item.type === 'string' && ENTRY_TYPE_META[item.type]) ? item.type : 'login';
         let service = item.service || item.name || item.title || '';
         let user = item.user || item.username || '';
         let pass = item.pass || item.password || '';
+        let totp = item.totp || '';
+        let cardExpiry = item.cardExpiry || '';
+        let cardCvv = item.cardCvv || '';
         let notes = item.notes || '';
-        let category = item.category || item.folder || 'General';
+        let category = item.category || item.folder || (item.folderId && folderMap.get(item.folderId)) || 'General';
         let tagsRaw = item.tags ? (Array.isArray(item.tags) ? item.tags : String(item.tags).split(/[,;]/)) : [];
         let tags = tagsRaw.map(t => String(t).trim().toLowerCase()).filter(Boolean);
         
         if (item.login) {
+            type = 'login';
             if (!user) user = item.login.username || '';
             if (!pass) pass = item.login.password || '';
+            if (!totp) totp = item.login.totp || '';
+        } else if (item.card) {
+            type = 'card';
+            if (!user) user = item.card.cardholderName || '';
+            if (!pass) pass = item.card.number || '';
+            if (!cardExpiry && (item.card.expMonth || item.card.expYear)) {
+                cardExpiry = `${String(item.card.expMonth || '').padStart(2, '0')}/${String(item.card.expYear || '').slice(-2)}`;
+            }
+            if (!cardCvv) cardCvv = item.card.code || '';
+        } else if (item.identity) {
+            type = 'identity';
+            const fullName = [item.identity.firstName, item.identity.lastName].filter(Boolean).join(' ');
+            if (!user) user = fullName || item.identity.username || '';
+            if (!pass) pass = item.identity.passportNumber || item.identity.licenseNumber || item.identity.ssn || item.identity.phone || item.identity.email || '';
+        } else if (item.sshKey) {
+            type = 'ssh';
+            if (!user) user = item.sshKey.keyFingerprint || item.sshKey.publicKey || '';
+            if (!pass) pass = item.sshKey.privateKey || '';
+        } else if (item.type === 2 && !pass && notes) {
+            // Bitwarden Secure Note: store note body in masked/revealable pass field
+            type = 'identity';
+            if (!user) user = 'Secure Note';
+            pass = notes;
         }
         
-        if (service && pass) {
-            parsed.push({
+        if (service && (pass || user || notes)) {
+            const entry = {
                 id: Date.now() + index,
+                type,
                 category: category,
                 service: service.trim(),
                 user: user.trim(),
-                pass: pass,
+                pass: pass || '',
                 tags: tags,
                 notes: notes.trim()
-            });
+            };
+            if (totp && String(totp).trim() && type === 'login') {
+                entry.totp = String(totp).trim();
+            }
+            if (type === 'card') {
+                if (cardExpiry) entry.cardExpiry = String(cardExpiry).trim();
+                if (cardCvv) entry.cardCvv = String(cardCvv).trim();
+            }
+            parsed.push(entry);
         }
     });
     return parsed;
@@ -3377,12 +4299,13 @@ function parseJSONImportData(jsonString) {
 
 function handleJSONImport(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const imported = parseJSONImportData(e.target.result);
             vaultData.push(...imported);
             renderDashboard();
             renderVault();
+            await persistEncryptedVault();
             showToast(`Imported ${imported.length} records successfully.`);
         } catch (err) {
             alert("Error parsing JSON file. Check format.");
@@ -3393,7 +4316,7 @@ function handleJSONImport(file) {
 
 function handleCSVImport(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const rows = parseCSVContent(e.target.result);
             if (rows.length === 0) return;
@@ -3409,11 +4332,12 @@ function handleCSVImport(file) {
                 return -1;
             };
             
-            const serviceIdx = findIndex(['service', 'name', 'url', 'title']);
-            const userIdx = findIndex(['username', 'login_username', 'user']);
+            const serviceIdx = findIndex(['service', 'name', 'url', 'title', 'account']);
+            const userIdx = findIndex(['username', 'login_username', 'user', 'login name']);
             const passIdx = findIndex(['password', 'login_password', 'pass']);
-            const notesIdx = findIndex(['notes', 'extra', 'description']);
-            const categoryIdx = findIndex(['category', 'folder', 'grouping']);
+            const totpIdx = findIndex(['totp', 'login_totp', 'otp']);
+            const notesIdx = findIndex(['notes', 'extra', 'description', 'comments']);
+            const categoryIdx = findIndex(['category', 'folder', 'grouping', 'group']);
             const tagsIdx = findIndex(['tags', 'tag', 'labels']);
             
             const hasHeader = (serviceIdx !== -1 || userIdx !== -1 || passIdx !== -1);
@@ -3423,12 +4347,13 @@ function handleCSVImport(file) {
                 const row = rows[i];
                 if (row.length < 2) continue;
                 
-                let service = "", user = "", pass = "", notes = "", category = "General", tags = [];
+                let service = "", user = "", pass = "", totp = "", notes = "", category = "General", tags = [];
                 
                 if (hasHeader) {
                     if (serviceIdx !== -1) service = row[serviceIdx] || "";
                     if (userIdx !== -1) user = row[userIdx] || "";
                     if (passIdx !== -1) pass = row[passIdx] || "";
+                    if (totpIdx !== -1) totp = row[totpIdx] || "";
                     if (notesIdx !== -1) notes = row[notesIdx] || "";
                     if (categoryIdx !== -1) category = row[categoryIdx] || "General";
                     if (tagsIdx !== -1 && row[tagsIdx]) {
@@ -3442,7 +4367,7 @@ function handleCSVImport(file) {
                 }
                 
                 if (service && pass) {
-                    vaultData.push({
+                    const entry = {
                         id: Date.now() + Math.floor(Math.random() * 1000) + count,
                         category: category,
                         service: service.trim(),
@@ -3450,13 +4375,16 @@ function handleCSVImport(file) {
                         pass: pass,
                         tags: tags,
                         notes: notes.trim()
-                    });
+                    };
+                    if (totp.trim()) entry.totp = totp.trim();
+                    vaultData.push(entry);
                     count++;
                 }
             }
             
             renderDashboard();
             renderVault();
+            await persistEncryptedVault();
             showToast(`Imported ${count} entries.`);
         } catch (e) {
             alert("Error parsing CSV data.");
@@ -3706,11 +4634,12 @@ function exportToCsv() {
         return alert("Vault is empty or locked.");
     }
     
-    const headers = ["Service", "Username", "Password", "Category", "Tags", "Notes"];
+    const headers = ["Service", "Username", "Password", "TOTP", "Category", "Tags", "Notes"];
     const rows = vaultData.map(item => [
         item.service,
         item.user,
         item.pass,
+        item.totp || '',
         item.category,
         (item.tags || []).join(';'),
         item.notes || ''
@@ -3727,15 +4656,6 @@ function exportToCsv() {
     a.download = 'vault_export_unencrypted.csv';
     a.click();
     showToast("Exported unencrypted CSV.");
-}
-
-// --- Session & UI Settings Wipes ---
-
-function confirmWipeSession() {
-    if (confirm("Wipe entire local session? Any unsaved changes will be lost permanently if you have not exported your data file!")) {
-        lockVault();
-        location.reload();
-    }
 }
 
 // --- Interface Helper & Toast Utilities ---
@@ -3868,6 +4788,10 @@ if (typeof window !== 'undefined') {
         window.addEventListener(evt, resetAutoLock, true);
     });
 
+    ['input', 'change'].forEach(evt => {
+        window.addEventListener(evt, syncFloatingLabels, true);
+    });
+
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 
@@ -3880,6 +4804,7 @@ if (typeof window !== 'undefined') {
         }
         updateOnlineStatus();
         checkSavedVault();
+        syncFloatingLabels();
     };
 }
 

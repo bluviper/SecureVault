@@ -27,7 +27,7 @@ function build() {
             const fontsCss = fs.readFileSync(fontsPath, 'utf8');
             const fontsRegex = /<link\s+rel="stylesheet"\s+href="fonts\.css"\s*\/?>/i;
             if (fontsRegex.test(html)) {
-                html = html.replace(fontsRegex, `<style>\n${fontsCss}\n</style>`);
+                html = html.replace(fontsRegex, () => `<style>\n${fontsCss}\n</style>`);
                 console.log(`  🔤 fonts.css inlined (${Math.round(fs.statSync(fontsPath).size / 1024)} KB)`);
             } else {
                 console.warn('  ⚠️ Warning: No fonts.css link found in index.html to replace.');
@@ -41,7 +41,7 @@ function build() {
             const css = fs.readFileSync(cssPath, 'utf8');
             const cssRegex = /<link\s+rel="stylesheet"\s+href="style\.css"\s*\/?>/i;
             if (cssRegex.test(html)) {
-                html = html.replace(cssRegex, `<style>\n${css}\n</style>`);
+                html = html.replace(cssRegex, () => `<style>\n${css}\n</style>`);
                 console.log('  🎨 style.css inlined');
             } else {
                 console.warn('  ⚠️ Warning: No stylesheet link found in index.html to replace.');
@@ -58,7 +58,7 @@ function build() {
             
             const jsRegex = /<script\s+src="app\.js"\s*><\/script>/i;
             if (jsRegex.test(html)) {
-                html = html.replace(jsRegex, `<script>\n${js}\n</script>`);
+                html = html.replace(jsRegex, () => `<script>\n${js}\n</script>`);
                 console.log('  ⚙️ app.js inlined (module exports stripped)');
             } else {
                 console.warn('  ⚠️ Warning: No app.js script tag found in index.html to replace.');

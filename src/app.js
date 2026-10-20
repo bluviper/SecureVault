@@ -16,8 +16,125 @@ let activeDashboardFilter = null; // 'weak', 'reused', 'vulnerable', or null
 // Auto-lock activity tracking
 let lastActivityTime = Date.now();
 let autoLockInterval = null;
+let totpRefreshInterval = null;
 
 // --- Cryptographic & Utility Functions ---
+
+const BASE32_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+
+/**
+ * Decodes an RFC 4648 Base32 string into a Uint8Array.
+ * Ignores spaces, hyphens, and padding ('='). Throws on invalid characters.
+ */
+function base32ToUint8(input) {
+    if (!input || typeof input !== 'string') {
+        throw new Error('Base32 secret is empty');
+    }
+    const clean = input.replace(/[\s\-=]+/g, '').toUpperCase();
+    if (!clean.length) {
+        throw new Error('Base32 secret is empty');
+    }
+
+    const out = new Uint8Array(Math.floor((clean.length * 5) / 8));
+    let bits = 0;
+    let value = 0;
+    let index = 0;
+
+    for (let i = 0; i < clean.length; i++) {
+        const idx = BASE32_ALPHABET.indexOf(clean[i]);
+        if (idx === -1) {
+            throw new Error(`Invalid Base32 character: ${clean[i]}`);
+        }
+        value = (value << 5) | idx;
+        bits += 5;
+        if (bits >= 8) {
+            bits -= 8;
+            out[index++] = (value >>> bits) & 0xff;
+        }
+    }
+    return out;
+}
+
+/**
+ * Parses a raw Base32 secret or an otpauth://totp/... URI into TOTP parameters.
+ */
+function parseTotpInput(input) {
+    if (!input || typeof input !== 'string') {
+        throw new Error('TOTP input is empty');
+    }
+    const trimmed = input.trim();
+    if (!trimmed) {
+        throw new Error('TOTP input is empty');
+    }
+
+    if (/^otpauth:\/\//i.test(trimmed)) {
+        let url;
+        try {
+            url = new URL(trimmed);
+        } catch {
+            throw new Error('Malformed otpauth:// URI');
+        }
+        const secret = url.searchParams.get('secret') || '';
+        const digitsParam = parseInt(url.searchParams.get('digits') || '6', 10);
+        const periodParam = parseInt(url.searchParams.get('period') || '30', 10);
+        const rawAlg = (url.searchParams.get('algorithm') || 'SHA1').toUpperCase().replace('-', '');
+
+        const algMap = { SHA1: 'SHA-1', SHA256: 'SHA-256', SHA512: 'SHA-512' };
+        const algorithm = algMap[rawAlg] || 'SHA-1';
+        const digits = (digitsParam === 6 || digitsParam === 8) ? digitsParam : 6;
+        const period = periodParam > 0 ? periodParam : 30;
+
+        base32ToUint8(secret);
+        return { secret, digits, period, algorithm };
+    }
+
+    base32ToUint8(trimmed);
+    return { secret: trimmed, digits: 6, period: 30, algorithm: 'SHA-1' };
+}
+
+/**
+ * Generates an RFC 6238 TOTP code using Web Crypto HMAC.
+ */
+async function generateTOTP(secretInput, timestampMs = Date.now()) {
+    const { secret, digits, period, algorithm } = parseTotpInput(secretInput);
+    const keyBytes = base32ToUint8(secret);
+
+    const epochSeconds = Math.floor(timestampMs / 1000);
+    const counter = Math.floor(epochSeconds / period);
+    const remaining = period - (epochSeconds % period);
+
+    const counterBytes = new Uint8Array(8);
+    const high = Math.floor(counter / 0x100000000);
+    const low = counter >>> 0;
+    counterBytes[0] = (high >>> 24) & 0xff;
+    counterBytes[1] = (high >>> 16) & 0xff;
+    counterBytes[2] = (high >>> 8) & 0xff;
+    counterBytes[3] = high & 0xff;
+    counterBytes[4] = (low >>> 24) & 0xff;
+    counterBytes[5] = (low >>> 16) & 0xff;
+    counterBytes[6] = (low >>> 8) & 0xff;
+    counterBytes[7] = low & 0xff;
+
+    const cryptoKey = await crypto.subtle.importKey(
+        'raw',
+        keyBytes,
+        { name: 'HMAC', hash: { name: algorithm } },
+        false,
+        ['sign']
+    );
+    const sig = await crypto.subtle.sign('HMAC', cryptoKey, counterBytes);
+    const hmac = new Uint8Array(sig);
+
+    const offset = hmac[hmac.length - 1] & 0x0f;
+    const binary =
+        ((hmac[offset] & 0x7f) << 24) |
+        ((hmac[offset + 1] & 0xff) << 16) |
+        ((hmac[offset + 2] & 0xff) << 8) |
+        (hmac[offset + 3] & 0xff);
+
+    const code = (binary % (10 ** digits)).toString().padStart(digits, '0');
+    return { code, remaining, period };
+}
 
 /**
  * Converts a Uint8Array to a Base64 string.
@@ -116,46 +233,194 @@ async function decrypt(encryptedDataBase64, ivBase64, key) {
 
 // --- Security & Strength Assessment Functions ---
 
+// Compact high-frequency leaked password stems for offline pattern scoring
+const COMMON_PASSWORD_STEMS = [
+    'password', 'qwerty', 'asdfgh', 'zxcvbn', 'admin', 'welcome', 'letmein',
+    'monkey', 'dragon', 'master', 'login', 'princess', 'sunshine', 'football',
+    'baseball', 'iloveyou', 'trustno', 'superman', 'batman', 'shadow', 'michael',
+    'charlie', 'andrew', 'robert', 'thomas', 'daniel', 'matthew', 'joshua',
+    'jessica', 'ashley', 'amanda', 'nicole', 'secret', 'autumn', 'winter',
+    'summer', 'spring', 'access', 'computer', 'internet', 'service', 'account',
+    'freedom', 'whatever', 'nothing', 'forever', 'killer', 'pepper', 'ginger',
+    'bailey', 'buster', 'harley', 'hunter', 'ranger', 'soccer', 'hockey',
+    'silver', 'matrix', 'falcon', 'wizard', 'knight', 'viking', 'crypto',
+    'bitcoin', 'google', 'github', 'amazon', 'apple'
+];
+
+const SEQUENCE_ROWS = [
+    'abcdefghijklmnopqrstuvwxyz',
+    '01234567890',
+    'qwertyuiop',
+    'asdfghjkl',
+    'zxcvbnm'
+];
+
+const LEET_MAP = {
+    '@': 'a', '4': 'a', '0': 'o', '1': 'i', '!': 'i',
+    '3': 'e', '$': 's', '5': 's', '7': 't'
+};
+
 /**
- * Calculates entropy-based strength for a password.
+ * Normalizes common leetspeak substitutions to lowercase ASCII for dictionary matching.
  */
-function calculateEntropy(password) {
-    if (!password) return 0;
+function normalizeLeet(str) {
+    let out = '';
+    for (let i = 0; i < str.length; i++) {
+        const ch = str[i].toLowerCase();
+        out += LEET_MAP[ch] || ch;
+    }
+    return out;
+}
+
+/**
+ * Evaluates effective password entropy (in bits) by discounting predictable patterns:
+ * dictionary stems (including l33t), repeated characters, keyboard/alphanumeric sequences, and years.
+ */
+function analyzePasswordEntropy(password) {
+    if (!password) return { entropy: 0, warning: '' };
+
     let charsetSize = 0;
     if (/[a-z]/.test(password)) charsetSize += 26;
     if (/[A-Z]/.test(password)) charsetSize += 26;
     if (/[0-9]/.test(password)) charsetSize += 10;
     if (/[^a-zA-Z0-9]/.test(password)) charsetSize += 32;
-    
-    if (charsetSize === 0) return 0;
-    return Math.round(password.length * Math.log2(charsetSize));
+    if (charsetSize === 0) return { entropy: 0, warning: '' };
+
+    const bitsPerChar = Math.log2(charsetSize);
+    const len = password.length;
+    const discounted = new Uint8Array(len);
+    const lower = password.toLowerCase();
+    const leet = normalizeLeet(password);
+
+    let patternBits = 0;
+    let warning = '';
+
+    // 1. Dictionary & l33tspeak stems
+    for (const stem of COMMON_PASSWORD_STEMS) {
+        for (const source of [lower, leet]) {
+            let pos = source.indexOf(stem);
+            while (pos !== -1) {
+                let overlap = false;
+                for (let i = pos; i < pos + stem.length; i++) {
+                    if (discounted[i]) { overlap = true; break; }
+                }
+                if (!overlap) {
+                    for (let i = pos; i < pos + stem.length; i++) discounted[i] = 1;
+                    const rawSlice = password.slice(pos, pos + stem.length);
+                    const hasUpper = /[A-Z]/.test(rawSlice);
+                    const hasLeet = lower.slice(pos, pos + stem.length) !== leet.slice(pos, pos + stem.length);
+                    patternBits += 10 + (hasUpper ? 1 : 0) + (hasLeet ? 2 : 0);
+                    if (!warning) warning = 'Common word pattern';
+                }
+                pos = source.indexOf(stem, pos + 1);
+            }
+        }
+    }
+
+    // 2. Repeated character runs (3+ identical chars, e.g. "aaaa", "1111")
+    for (let i = 0; i < len;) {
+        let j = i + 1;
+        while (j < len && password[j] === password[i]) j++;
+        if (j - i >= 3) {
+            let uncounted = 0;
+            for (let k = i; k < j; k++) {
+                if (!discounted[k]) { discounted[k] = 1; uncounted++; }
+            }
+            if (uncounted > 0) {
+                patternBits += bitsPerChar + 1.5;
+                if (!warning) warning = 'Repeated characters';
+            }
+        }
+        i = j;
+    }
+
+    // 3. Keyboard & alphanumeric sequences (3+ chars forward or reverse, e.g. "12345", "qwerty")
+    for (let i = 0; i <= len - 3; i++) {
+        if (discounted[i] && discounted[i + 1] && discounted[i + 2]) continue;
+        let maxSeq = 0;
+        for (const row of SEQUENCE_ROWS) {
+            const rev = row.split('').reverse().join('');
+            for (let subLen = len - i; subLen >= 3; subLen--) {
+                const sub = lower.slice(i, i + subLen);
+                if (row.includes(sub) || rev.includes(sub)) {
+                    if (subLen > maxSeq) maxSeq = subLen;
+                    break;
+                }
+            }
+        }
+        if (maxSeq >= 3) {
+            for (let k = i; k < i + maxSeq; k++) discounted[k] = 1;
+            patternBits += 4;
+            if (!warning) warning = 'Sequential pattern';
+            i += maxSeq - 1;
+        }
+    }
+
+    // 4. 4-digit years (1900-2099)
+    const yearRegex = /(?:19|20)\d{2}/g;
+    let match;
+    while ((match = yearRegex.exec(password)) !== null) {
+        const start = match.index;
+        if (!discounted[start] && !discounted[start + 1] && !discounted[start + 2] && !discounted[start + 3]) {
+            for (let k = start; k < start + 4; k++) discounted[k] = 1;
+            patternBits += 6.5;
+            if (!warning) warning = 'Year pattern';
+        }
+    }
+
+    // 5. Remaining unpredictable characters get full charset entropy
+    let randomChars = 0;
+    for (let i = 0; i < len; i++) {
+        if (!discounted[i]) randomChars++;
+    }
+
+    const entropy = Math.round(patternBits + randomChars * bitsPerChar);
+    return { entropy, warning };
+}
+
+/**
+ * Calculates pattern-adjusted effective entropy (in bits) for a password.
+ */
+function calculateEntropy(password) {
+    return analyzePasswordEntropy(password).entropy;
 }
 
 /**
  * Returns strength classification object mapped to semantic theme tokens (danger, warning, success).
  */
 function assessPasswordStrength(password) {
-    if (!password) return { score: 0, label: 'None', token: 'muted' };
-    if (password.length < 8) return { score: 1, label: 'Weak', token: 'danger' };
-    
-    const entropy = calculateEntropy(password);
-    
-    if (entropy < 40 || password.length < 10) {
-        return { score: 1, label: 'Weak', token: 'danger' };
-    } else if (entropy < 70 || password.length < 14) {
-        return { score: 2, label: 'Medium', token: 'warning' };
+    if (!password) return { score: 0, label: 'None', token: 'muted', entropy: 0, warning: '' };
+    const { entropy, warning } = analyzePasswordEntropy(password);
+
+    if (password.length < 8 || entropy < 42 || (password.length < 10 && entropy < 52)) {
+        return {
+            score: 1,
+            label: 'Weak',
+            token: 'danger',
+            entropy,
+            warning: warning || (password.length < 8 ? 'Too short (< 8 chars)' : '')
+        };
+    } else if (entropy < 68 || (password.length < 12 && entropy < 75)) {
+        return { score: 2, label: 'Medium', token: 'warning', entropy, warning };
     } else {
-        return { score: 3, label: 'Strong', token: 'success' };
+        return { score: 3, label: 'Strong', token: 'success', entropy, warning: '' };
     }
 }
 
 /**
- * Returns a Set of passwords that appear more than once in the active vault.
+ * Returns true if the entry is a standard login record (default when type is omitted).
+ */
+function isLoginEntry(item) {
+    return !item || !item.type || item.type === 'login';
+}
+
+/**
+ * Returns a Set of passwords that appear more than once among login entries in the active vault.
  */
 function getReusedPasswordSet() {
     const counts = new Map();
     vaultData.forEach(item => {
-        if (item.pass) {
+        if (isLoginEntry(item) && item.pass) {
             counts.set(item.pass, (counts.get(item.pass) || 0) + 1);
         }
     });
@@ -292,11 +557,14 @@ function lockVault() {
     
     // Stop intervals
     clearInterval(autoLockInterval);
+    clearInterval(totpRefreshInterval);
+    totpRefreshInterval = null;
     clearTimeout(clipboardClearTimer);
     
     const progressBar = document.getElementById('auto-lock-progressbar');
     if (progressBar) progressBar.style.transform = 'scaleX(0)';
 
+    syncFloatingLabels();
     checkSavedVault();
 }
 
@@ -380,13 +648,6 @@ function switchTab(tab) {
     const tabPane = document.getElementById(`tab-${tab}`);
     if (tabBtn) tabBtn.classList.add('active');
     if (tabPane) tabPane.classList.add('active');
-    
-    if (tab === 'generator') {
-        const genResult = document.getElementById('gen-result');
-        if (!genResult || genResult.innerText === "Select options") {
-            generatePassword();
-        }
-    }
 }
 
 // --- Dashboard & Metrics Visualizer ---
@@ -403,6 +664,7 @@ function renderDashboard() {
     let vulnerable = 0;
     
     vaultData.forEach(item => {
+        if (!isLoginEntry(item)) return;
         const rating = assessPasswordStrength(item.pass);
         if (rating.label === 'Weak') weak++;
         if (item.pass.length < 12) vulnerable++;
@@ -479,6 +741,117 @@ function updateFilterBarUI() {
 // --- List View Rendering ---
 
 /**
+ * Formats a numeric OTP code with a middle space for readability (e.g. "123 456").
+ */
+function formatTotpDisplay(code) {
+    if (!code) return '--- ---';
+    const mid = Math.floor(code.length / 2);
+    return `${code.slice(0, mid)} ${code.slice(mid)}`;
+}
+
+/**
+ * Refreshes all visible TOTP badges in the rendered vault list.
+ */
+async function refreshVisibleTotpBadges() {
+    if (typeof document === 'undefined' || !masterKey) return;
+    const buttons = document.querySelectorAll('.totp-code-btn[data-totp-secret]');
+    if (buttons.length === 0) {
+        clearInterval(totpRefreshInterval);
+        totpRefreshInterval = null;
+        return;
+    }
+
+    const now = Date.now();
+    for (const btn of buttons) {
+        const secret = btn.getAttribute('data-totp-secret');
+        const codeEl = btn.querySelector('.totp-code-text');
+        const timerEl = btn.querySelector('.totp-timer-pill');
+        if (!secret || !codeEl || !timerEl) continue;
+
+        try {
+            const { code, remaining } = await generateTOTP(secret, now);
+            codeEl.innerText = formatTotpDisplay(code);
+            timerEl.innerText = `${remaining}s`;
+            timerEl.classList.toggle('expiring', remaining <= 5);
+        } catch {
+            codeEl.innerText = 'Invalid 2FA';
+            timerEl.innerText = '';
+        }
+    }
+}
+
+/**
+ * Starts or stops the 1s TOTP refresh timer depending on whether TOTP items are visible.
+ */
+function syncTotpLiveTimer() {
+    clearInterval(totpRefreshInterval);
+    totpRefreshInterval = null;
+    if (typeof document === 'undefined' || !masterKey) return;
+
+    const buttons = document.querySelectorAll('.totp-code-btn[data-totp-secret]');
+    if (buttons.length > 0) {
+        refreshVisibleTotpBadges();
+        totpRefreshInterval = setInterval(refreshVisibleTotpBadges, 1000);
+    }
+}
+
+/**
+ * Generates and copies the current TOTP code for a secret to the clipboard.
+ */
+async function copyTotpCode(secret) {
+    if (!secret) return;
+    try {
+        const { code } = await generateTOTP(secret);
+        copyCredentialPassword(code);
+    } catch {
+        alert('Invalid TOTP secret.');
+    }
+}
+
+const ENTRY_TYPE_META = {
+    login: {
+        badge: 'LOGIN',
+        secLabel: 'Login Credential',
+        serviceLabel: 'Service Name / Website',
+        servicePlaceholder: 'e.g. Google, Amazon...',
+        userLabel: 'Username / Email',
+        userPlaceholder: 'e.g. email@domain.com',
+        passLabel: 'Password',
+        notesPlaceholder: 'API keys, secret questions, URLs...'
+    },
+    card: {
+        badge: 'CARD',
+        secLabel: 'Payment Card',
+        serviceLabel: 'Card Label / Bank',
+        servicePlaceholder: 'e.g. Chase Sapphire, Corporate Visa...',
+        userLabel: 'Cardholder Name',
+        userPlaceholder: 'e.g. J. Dela Cruz',
+        passLabel: 'Card Number',
+        notesPlaceholder: 'Billing address, PIN notes, support phone...'
+    },
+    identity: {
+        badge: 'IDENTITY',
+        secLabel: 'Identity Document',
+        serviceLabel: 'Document / ID Type',
+        servicePlaceholder: 'e.g. Passport, Driver License, National ID...',
+        userLabel: 'Full Name / Holder',
+        userPlaceholder: 'e.g. Juan Dela Cruz',
+        passLabel: 'Document / ID Number',
+        notesPlaceholder: 'Issuing authority, expiry date, address...'
+    },
+    ssh: {
+        badge: 'SSH KEY',
+        secLabel: 'SSH / API Key',
+        serviceLabel: 'Host / Key Label',
+        servicePlaceholder: 'e.g. Prod Bastion, GitHub Deploy Key...',
+        userLabel: 'Username / Fingerprint / Public Key',
+        userPlaceholder: 'e.g. root@10.0.0.5 or SHA256:...',
+        passLabel: 'Private Key / Secret Token',
+        notesPlaceholder: 'Passphrase hint, port, jump host config...'
+    }
+};
+
+/**
  * Render items in vault credentials list.
  */
 function renderVault() {
@@ -505,20 +878,22 @@ function renderVault() {
         // Category filter
         const matchesCategory = categoryFilter === 'All' || item.category === categoryFilter;
         
-        // Active Dashboard stats filters
+        // Active Dashboard stats filters (apply only to login entries)
         let matchesDashboard = true;
         if (activeDashboardFilter === 'weak') {
-            matchesDashboard = assessPasswordStrength(item.pass).label === 'Weak';
+            matchesDashboard = isLoginEntry(item) && assessPasswordStrength(item.pass).label === 'Weak';
         } else if (activeDashboardFilter === 'reused') {
-            matchesDashboard = item.pass && reusedSet.has(item.pass);
+            matchesDashboard = isLoginEntry(item) && item.pass && reusedSet.has(item.pass);
         } else if (activeDashboardFilter === 'vulnerable') {
-            matchesDashboard = item.pass.length < 12;
+            matchesDashboard = isLoginEntry(item) && item.pass.length < 12;
         }
         
         return matchesSearch && matchesCategory && matchesDashboard;
     });
 
     if (filtered.length === 0) {
+        clearInterval(totpRefreshInterval);
+        totpRefreshInterval = null;
         list.innerHTML = `
             <div class="empty-state">
                 <p>No credentials found matching filters.</p>
@@ -528,6 +903,9 @@ function renderVault() {
     }
     
     filtered.forEach((item, index) => {
+        const entryType = item.type && ENTRY_TYPE_META[item.type] ? item.type : 'login';
+        const typeMeta = ENTRY_TYPE_META[entryType];
+
         const outer = document.createElement('div');
         outer.className = 'vault-item-outer';
         outer.style.animationDelay = `${index * 0.05}s`;
@@ -543,25 +921,63 @@ function renderVault() {
         
         const h4 = document.createElement('h4');
         h4.innerText = item.service;
+        titleRow.appendChild(h4);
+
+        if (entryType !== 'login') {
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'badge-tag badge-accent';
+            typeBadge.innerText = typeMeta.badge;
+            titleRow.appendChild(typeBadge);
+        }
         
         const badge = document.createElement('span');
         badge.className = 'badge-tag';
         badge.innerText = item.category || 'General';
-        
-        titleRow.appendChild(h4);
         titleRow.appendChild(badge);
         
         const userP = document.createElement('p');
         userP.className = 'item-user-text';
-        userP.innerText = item.user || 'No username';
+        let subtitle = item.user || (entryType === 'login' ? 'No username' : '—');
+        if (entryType === 'card' && item.cardExpiry) {
+            subtitle += ` • Exp: ${item.cardExpiry}`;
+        }
+        userP.innerText = subtitle;
 
-        // Revealable password cell (mono credential value, hidden by default)
+        // Revealable secret cell (mono credential value, hidden by default)
         const passRow = document.createElement('div');
         passRow.className = 'item-pass-row hidden';
         const passText = document.createElement('span');
         passText.className = 'credential-value';
-        passText.innerText = item.pass;
+        passText.innerText = (entryType === 'card' && item.cardCvv)
+            ? `${item.pass}  (CVV: ${item.cardCvv})`
+            : item.pass;
         passRow.appendChild(passText);
+
+        // Live TOTP 2FA badge row if entry has a TOTP secret configured
+        let totpRow = null;
+        if (item.totp && entryType === 'login') {
+            totpRow = document.createElement('div');
+            totpRow.className = 'item-totp-row';
+
+            const totpBtn = document.createElement('button');
+            totpBtn.type = 'button';
+            totpBtn.className = 'totp-code-btn';
+            totpBtn.setAttribute('data-totp-secret', item.totp);
+            totpBtn.title = 'Click to copy 2FA TOTP code';
+            totpBtn.onclick = () => copyTotpCode(item.totp);
+
+            const codeSpan = document.createElement('span');
+            codeSpan.className = 'totp-code-text';
+            codeSpan.innerText = '••• •••';
+
+            const timerSpan = document.createElement('span');
+            timerSpan.className = 'totp-timer-pill';
+            timerSpan.innerText = '--s';
+
+            totpBtn.appendChild(codeSpan);
+            totpBtn.appendChild(timerSpan);
+            totpRow.appendChild(totpBtn);
+        }
 
         // Render tags if present
         if (item.tags && item.tags.length > 0) {
@@ -580,27 +996,38 @@ function renderVault() {
         const secRow = document.createElement('div');
         secRow.className = 'item-security-row';
         
-        const rating = assessPasswordStrength(item.pass);
-        const dot = document.createElement('span');
-        dot.className = `status-indicator-dot bg-${rating.token}`;
-        
-        const label = document.createElement('span');
-        label.className = `strength-text-label text-${rating.token}`;
-        label.innerText = rating.label;
-        
-        secRow.appendChild(dot);
-        secRow.appendChild(label);
-        
-        if (item.pass && reusedSet.has(item.pass)) {
-            const reuseLabel = document.createElement('span');
-            reuseLabel.className = 'strength-text-label strength-reuse';
-            reuseLabel.innerText = '• Reused';
-            secRow.appendChild(reuseLabel);
+        if (entryType === 'login') {
+            const rating = assessPasswordStrength(item.pass);
+            const dot = document.createElement('span');
+            dot.className = `status-indicator-dot bg-${rating.token}`;
+            
+            const label = document.createElement('span');
+            label.className = `strength-text-label text-${rating.token}`;
+            label.innerText = rating.label;
+            
+            secRow.appendChild(dot);
+            secRow.appendChild(label);
+            
+            if (item.pass && reusedSet.has(item.pass)) {
+                const reuseLabel = document.createElement('span');
+                reuseLabel.className = 'strength-text-label strength-reuse';
+                reuseLabel.innerText = '• Reused';
+                secRow.appendChild(reuseLabel);
+            }
+        } else {
+            const dot = document.createElement('span');
+            dot.className = 'status-indicator-dot online';
+            const label = document.createElement('span');
+            label.className = 'strength-text-label text-muted';
+            label.innerText = typeMeta.secLabel;
+            secRow.appendChild(dot);
+            secRow.appendChild(label);
         }
         
         info.appendChild(titleRow);
         info.appendChild(userP);
         info.appendChild(passRow);
+        if (totpRow) info.appendChild(totpRow);
         info.appendChild(secRow);
         
         // Actions
@@ -609,15 +1036,15 @@ function renderVault() {
         
         const revealBtn = document.createElement('button');
         revealBtn.className = 'btn-action-icon btn-reveal';
-        revealBtn.title = 'Reveal Password';
-        revealBtn.setAttribute('aria-label', 'Reveal Password');
+        revealBtn.title = `Reveal ${typeMeta.passLabel}`;
+        revealBtn.setAttribute('aria-label', `Reveal ${typeMeta.passLabel}`);
         revealBtn.onclick = () => toggleEntryReveal(passRow, revealBtn);
         revealBtn.innerHTML = EYE_OPEN_SVG;
         
         const copyBtn = document.createElement('button');
         copyBtn.className = 'btn-action-icon';
-        copyBtn.title = 'Copy Password';
-        copyBtn.setAttribute('aria-label', 'Copy Password');
+        copyBtn.title = `Copy ${typeMeta.passLabel}`;
+        copyBtn.setAttribute('aria-label', `Copy ${typeMeta.passLabel}`);
         copyBtn.onclick = () => copyCredentialPassword(item.pass);
         copyBtn.innerHTML = `
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -660,6 +1087,8 @@ function renderVault() {
         outer.appendChild(inner);
         list.appendChild(outer);
     });
+
+    syncTotpLiveTimer();
 }
 
 // --- Category & Tag Management ---
@@ -710,15 +1139,104 @@ function handleCategoryChange(e) {
 }
 
 // --- Entry Editing & Addition Modal ---
+let modalPassWasGenerated = false;
+let currentEntryType = 'login';
+const ENTRY_TYPE_ORDER = ['login', 'card', 'identity', 'ssh'];
+
+/**
+ * Syncs the .is-raised class on all .floating-field wrappers based on whether their input/textarea has a value.
+ */
+function syncFloatingLabels() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.floating-field').forEach(wrapper => {
+        const control = wrapper.querySelector('input, select, textarea');
+        if (!control) return;
+        const isSelect = control.tagName === 'SELECT';
+        const hasVal = isSelect || (control.value && control.value.length > 0);
+        wrapper.classList.toggle('is-raised', Boolean(hasVal));
+    });
+}
+
+/**
+ * Switches the Add/Edit modal between 'login', 'card', 'identity', and 'ssh' entry types.
+ */
+function setModalEntryType(type) {
+    currentEntryType = ENTRY_TYPE_META[type] ? type : 'login';
+    const meta = ENTRY_TYPE_META[currentEntryType];
+
+    if (typeof document === 'undefined') return;
+
+    const index = Math.max(0, ENTRY_TYPE_ORDER.indexOf(currentEntryType));
+    const thumb = document.getElementById('entry-type-thumb');
+    const thumbInner = document.getElementById('entry-type-thumb-inner');
+    if (thumb) {
+        thumb.style.transform = `translate3d(${index * 100}%, 0, 0)`;
+    }
+    if (thumbInner) {
+        thumbInner.style.transform = `translate3d(${index * -25}%, 0, 0)`;
+    }
+
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        const isActive = btn.getAttribute('data-entry-type') === currentEntryType;
+        btn.classList.toggle('active', isActive);
+        btn.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+
+    const serviceLabel = document.getElementById('label-entry-service');
+    const serviceInput = document.getElementById('entry-service');
+    const userLabel = document.getElementById('label-entry-user');
+    const userInput = document.getElementById('entry-user');
+    const passLabel = document.getElementById('label-entry-pass');
+    const notesInput = document.getElementById('entry-notes');
+
+    if (serviceLabel) serviceLabel.innerText = meta.serviceLabel;
+    if (serviceInput) serviceInput.placeholder = meta.servicePlaceholder;
+    if (userLabel) userLabel.innerText = meta.userLabel;
+    if (userInput) userInput.placeholder = meta.userPlaceholder;
+    if (passLabel) passLabel.innerText = meta.passLabel;
+    if (notesInput) notesInput.placeholder = meta.notesPlaceholder;
+
+    const isLogin = currentEntryType === 'login';
+    const isCard = currentEntryType === 'card';
+
+    const strengthSec = document.getElementById('modal-pass-strength-section');
+    const totpSec = document.getElementById('modal-totp-section');
+    const diceBtn = document.getElementById('btn-dice-pass');
+    const cardExtra = document.getElementById('modal-card-extra');
+
+    if (strengthSec) strengthSec.classList.toggle('hidden', !isLogin);
+    if (totpSec) totpSec.classList.toggle('hidden', !isLogin);
+    if (diceBtn) diceBtn.classList.toggle('hidden', !isLogin);
+    if (cardExtra) cardExtra.classList.toggle('hidden', !isCard);
+    syncFloatingLabels();
+}
+
+function handleModalGenOptionChange() {
+    const modalLen = document.getElementById('modal-gen-length');
+    if (modalLen) {
+        modalLen.value = Math.min(64, Math.max(8, parseInt(modalLen.value, 10) || 16));
+    }
+    if (modalPassWasGenerated) {
+        fillGeneratedPass();
+    }
+}
 
 function showAddModal() {
     currentEditId = null;
+    modalPassWasGenerated = false;
     document.getElementById('modal-title').innerText = 'Add Entry';
     populateCategorySelectors();
+    setModalEntryType('login');
     document.getElementById('entry-category').value = 'General';
     document.getElementById('entry-service').value = '';
     document.getElementById('entry-user').value = '';
     document.getElementById('entry-pass').value = '';
+    const expEl = document.getElementById('entry-card-expiry');
+    if (expEl) expEl.value = '';
+    const cvvEl = document.getElementById('entry-card-cvv');
+    if (cvvEl) cvvEl.value = '';
+    const totpEl = document.getElementById('entry-totp');
+    if (totpEl) totpEl.value = '';
     const tagsEl = document.getElementById('entry-tags');
     if (tagsEl) tagsEl.value = '';
     document.getElementById('entry-notes').value = '';
@@ -727,6 +1245,7 @@ function showAddModal() {
     if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength('');
+    syncFloatingLabels();
     document.getElementById('modal').classList.add('active');
 }
 
@@ -735,12 +1254,20 @@ function showEditModal(id) {
     if (!item) return;
     
     currentEditId = id;
+    modalPassWasGenerated = false;
     document.getElementById('modal-title').innerText = 'Edit Entry';
     populateCategorySelectors();
+    setModalEntryType(item.type || 'login');
     document.getElementById('entry-category').value = item.category || 'General';
     document.getElementById('entry-service').value = item.service;
     document.getElementById('entry-user').value = item.user || '';
     document.getElementById('entry-pass').value = item.pass;
+    const expEl = document.getElementById('entry-card-expiry');
+    if (expEl) expEl.value = item.cardExpiry || '';
+    const cvvEl = document.getElementById('entry-card-cvv');
+    if (cvvEl) cvvEl.value = item.cardCvv || '';
+    const totpEl = document.getElementById('entry-totp');
+    if (totpEl) totpEl.value = item.totp || '';
     const tagsEl = document.getElementById('entry-tags');
     if (tagsEl) tagsEl.value = (item.tags || []).join(', ');
     document.getElementById('entry-notes').value = item.notes || '';
@@ -749,6 +1276,7 @@ function showEditModal(id) {
     if (pwInput) pwInput.type = 'password';
     
     analyzeEntryPasswordStrength(item.pass);
+    syncFloatingLabels();
     document.getElementById('modal').classList.add('active');
 }
 
@@ -765,50 +1293,62 @@ function analyzeEntryPasswordStrength(password) {
         fill.className = `strength-bar-fill strength-${rating.token}`;
     }
     if (label) {
-        label.innerText = rating.label;
+        label.innerText = rating.warning ? `${rating.label} (${rating.warning})` : rating.label;
         label.className = `text-${rating.token}`;
     }
 }
 
 /**
- * Handles saving password record.
+ * Handles saving credential record across all entry types.
  */
 async function saveEntry() {
+    const type = currentEntryType || 'login';
+    const meta = ENTRY_TYPE_META[type] || ENTRY_TYPE_META.login;
     const category = document.getElementById('entry-category').value;
     const service = document.getElementById('entry-service').value.trim();
     const user = document.getElementById('entry-user').value.trim();
     const pass = document.getElementById('entry-pass').value;
+    const cardExpiry = document.getElementById('entry-card-expiry') ? document.getElementById('entry-card-expiry').value.trim() : '';
+    const cardCvv = document.getElementById('entry-card-cvv') ? document.getElementById('entry-card-cvv').value.trim() : '';
+    const totp = (type === 'login' && document.getElementById('entry-totp')) ? document.getElementById('entry-totp').value.trim() : '';
     const tagsRaw = document.getElementById('entry-tags') ? document.getElementById('entry-tags').value.trim() : '';
     const notes = document.getElementById('entry-notes').value;
     
     if (!service || !pass) {
-        return alert("Service name and password are required.");
+        return alert(`${meta.serviceLabel} and ${meta.passLabel} are required.`);
+    }
+
+    if (totp) {
+        try {
+            parseTotpInput(totp);
+        } catch (err) {
+            return alert(`Invalid TOTP secret or URI: ${err.message}`);
+        }
     }
     
     const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim().toLowerCase()).filter(Boolean) : [];
+    const record = {
+        id: currentEditId !== null ? currentEditId : (Date.now() + Math.floor(Math.random() * 100)),
+        type,
+        category,
+        service,
+        user,
+        pass,
+        totp,
+        tags,
+        notes
+    };
+    if (type === 'card') {
+        if (cardExpiry) record.cardExpiry = cardExpiry;
+        if (cardCvv) record.cardCvv = cardCvv;
+    }
     
     if (currentEditId !== null) {
         const index = vaultData.findIndex(i => i.id === currentEditId);
-        vaultData[index] = { 
-            id: currentEditId, 
-            category, 
-            service, 
-            user, 
-            pass,
-            tags,
-            notes 
-        };
+        vaultData[index] = record;
         showToast("Entry updated.");
     } else {
-        vaultData.push({ 
-            id: Date.now() + Math.floor(Math.random() * 100), 
-            category, 
-            service, 
-            user, 
-            pass,
-            tags,
-            notes 
-        });
+        vaultData.push(record);
         showToast("New entry created.");
     }
     
@@ -836,13 +1376,13 @@ async function deleteEntry(id) {
  * Generates cryptographically secure random password using rejection sampling to prevent modulo bias.
  */
 function generatePassword() {
-    const lengthInput = document.getElementById('gen-length');
-    const length = lengthInput ? parseInt(lengthInput.value) || 16 : 16;
+    const lengthInput = document.getElementById('modal-gen-length');
+    const length = lengthInput ? Math.min(64, Math.max(8, parseInt(lengthInput.value, 10) || 16)) : 16;
     
-    const incLower = document.getElementById('gen-lower')?.checked ?? true;
-    const incUpper = document.getElementById('gen-upper')?.checked ?? true;
-    const incNumbers = document.getElementById('gen-numbers')?.checked ?? true;
-    const incSymbols = document.getElementById('gen-symbols')?.checked ?? true;
+    const incLower = document.getElementById('modal-gen-lower')?.checked ?? true;
+    const incUpper = document.getElementById('modal-gen-upper')?.checked ?? true;
+    const incNumbers = document.getElementById('modal-gen-numbers')?.checked ?? true;
+    const incSymbols = document.getElementById('modal-gen-symbols')?.checked ?? true;
     
     let charset = '';
     if (incLower) charset += 'abcdefghijklmnopqrstuvwxyz';
@@ -850,10 +1390,7 @@ function generatePassword() {
     if (incNumbers) charset += '0123456789';
     if (incSymbols) charset += '!@#$%^&*()_+-=[]{}|;:,.<>?';
     
-    if (!charset) {
-        document.getElementById('gen-result').innerText = "Select options";
-        return;
-    }
+    if (!charset) return '';
     
     let generated = '';
     const maxUint32 = 0xFFFFFFFF;
@@ -866,34 +1403,18 @@ function generatePassword() {
             generated += charset.charAt(rand[0] % charset.length);
         }
     }
-    
-    const genResult = document.getElementById('gen-result');
-    if (genResult) genResult.innerText = generated;
-    
-    const strength = assessPasswordStrength(generated);
-    const fill = document.getElementById('gen-strength-fill');
-    const label = document.getElementById('gen-strength-label');
-    
-    if (fill) fill.className = `strength-bar-fill strength-${strength.token}`;
-    if (label) {
-        label.innerText = strength.label;
-        label.className = `text-${strength.token}`;
-    }
-}
-
-function copyGeneratedPassword() {
-    const pass = document.getElementById('gen-result')?.innerText;
-    if (!pass || pass === "Select options") return;
-    copyCredentialPassword(pass);
+    return generated;
 }
 
 function fillGeneratedPass() {
-    generatePassword();
-    const pass = document.getElementById('gen-result')?.innerText;
-    if (pass && pass !== "Select options") {
-        document.getElementById('entry-pass').value = pass;
-        analyzeEntryPasswordStrength(pass);
+    const pass = generatePassword();
+    if (!pass) {
+        return alert("Select at least one character set (A-Z, a-z, 0-9, or !@#$) to generate a password.");
     }
+    modalPassWasGenerated = true;
+    document.getElementById('entry-pass').value = pass;
+    analyzeEntryPasswordStrength(pass);
+    syncFloatingLabels();
 }
 
 // --- Import & Export Mechanics ---
@@ -908,41 +1429,189 @@ function handleUniversalImport(event) {
         handleCSVImport(file);
     } else if (extension === 'json') {
         handleJSONImport(file);
+    } else if (extension === 'xml') {
+        handleXMLImport(file);
     } else {
-        alert("Unsupported file type. SecureVault parses standard .csv or .json datasets.");
+        alert("Unsupported file type. SecureVault parses standard .csv, .json, or KeePass .xml exports.");
     }
     event.target.value = '';
+}
+
+function unescapeXmlEntities(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+        .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&');
+}
+
+/**
+ * Parses a KeePass 2.x / KeePassXC XML export (<KeePassFile>) into SecureVault entries.
+ * Strips <History> blocks so old password revisions are not imported as duplicate entries.
+ */
+function parseKeePassXML(xmlText) {
+    if (!xmlText || typeof xmlText !== 'string') return [];
+    const cleaned = xmlText.replace(/<History\b[^>]*>[\s\S]*?<\/History>/gi, '');
+
+    const parsed = [];
+    const groupStack = [];
+    const tokenRegex = /<Group\b[^>]*>([\s\S]*?)(?=<Group\b|<\/Group>|<Entry\b)|<\/Group>|<Entry\b[^>]*>([\s\S]*?)<\/Entry>/gi;
+
+    let match;
+    let index = 0;
+    while ((match = tokenRegex.exec(cleaned)) !== null) {
+        if (match[0].startsWith('</Group') || match[0].startsWith('</group')) {
+            groupStack.pop();
+            continue;
+        }
+        if (match[1] !== undefined) {
+            const nameMatch = match[1].match(/<Name>([\s\S]*?)<\/Name>/i);
+            const groupName = nameMatch ? unescapeXmlEntities(nameMatch[1]).trim() : '';
+            groupStack.push(groupName);
+            continue;
+        }
+        if (match[2] !== undefined) {
+            const entryBody = match[2];
+            const fields = {};
+            const strRegex = /<String>\s*<Key>([\s\S]*?)<\/Key>\s*<Value[^>]*>([\s\S]*?)<\/Value>\s*<\/String>/gi;
+            let sm;
+            while ((sm = strRegex.exec(entryBody)) !== null) {
+                const key = unescapeXmlEntities(sm[1]).trim().toLowerCase();
+                fields[key] = unescapeXmlEntities(sm[2]);
+            }
+
+            const service = (fields['title'] || fields['url'] || '').trim();
+            const user = (fields['username'] || '').trim();
+            const pass = fields['password'] || '';
+            const totp = (fields['otp'] || fields['totp seed'] || fields['totp'] || '').trim();
+            const notes = (fields['notes'] || '').trim();
+
+            const tagsMatch = entryBody.match(/<Tags>([\s\S]*?)<\/Tags>/i);
+            const tagsRaw = tagsMatch ? unescapeXmlEntities(tagsMatch[1]) : '';
+            const tags = tagsRaw ? tagsRaw.split(/[,;]/).map(t => t.trim().toLowerCase()).filter(Boolean) : [];
+
+            let category = 'General';
+            for (let i = groupStack.length - 1; i >= 0; i--) {
+                const g = groupStack[i];
+                if (g && !/^(root|database|keepass|passwords|recycle bin|trash)$/i.test(g)) {
+                    category = g;
+                    break;
+                }
+            }
+
+            if (service && pass) {
+                const entry = {
+                    id: Date.now() + index++,
+                    category,
+                    service,
+                    user,
+                    pass,
+                    tags,
+                    notes
+                };
+                if (totp) entry.totp = totp;
+                parsed.push(entry);
+            }
+        }
+    }
+    return parsed;
+}
+
+function handleXMLImport(file) {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const imported = parseKeePassXML(e.target.result);
+            vaultData.push(...imported);
+            renderDashboard();
+            renderVault();
+            await persistEncryptedVault();
+            showToast(`Imported ${imported.length} KeePass XML entries.`);
+        } catch (err) {
+            alert("Error parsing KeePass XML file.");
+        }
+    };
+    reader.readAsText(file);
 }
 
 function parseJSONImportData(jsonString) {
     const data = typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
     const items = Array.isArray(data) ? data : (data.items || []);
+    const folderMap = new Map();
+    if (data && Array.isArray(data.folders)) {
+        data.folders.forEach(f => {
+            if (f && f.id && f.name) {
+                folderMap.set(f.id, String(f.name).trim());
+            }
+        });
+    }
     const parsed = [];
     
     items.forEach((item, index) => {
+        let type = (typeof item.type === 'string' && ENTRY_TYPE_META[item.type]) ? item.type : 'login';
         let service = item.service || item.name || item.title || '';
         let user = item.user || item.username || '';
         let pass = item.pass || item.password || '';
+        let totp = item.totp || '';
+        let cardExpiry = item.cardExpiry || '';
+        let cardCvv = item.cardCvv || '';
         let notes = item.notes || '';
-        let category = item.category || item.folder || 'General';
+        let category = item.category || item.folder || (item.folderId && folderMap.get(item.folderId)) || 'General';
         let tagsRaw = item.tags ? (Array.isArray(item.tags) ? item.tags : String(item.tags).split(/[,;]/)) : [];
         let tags = tagsRaw.map(t => String(t).trim().toLowerCase()).filter(Boolean);
         
         if (item.login) {
+            type = 'login';
             if (!user) user = item.login.username || '';
             if (!pass) pass = item.login.password || '';
+            if (!totp) totp = item.login.totp || '';
+        } else if (item.card) {
+            type = 'card';
+            if (!user) user = item.card.cardholderName || '';
+            if (!pass) pass = item.card.number || '';
+            if (!cardExpiry && (item.card.expMonth || item.card.expYear)) {
+                cardExpiry = `${String(item.card.expMonth || '').padStart(2, '0')}/${String(item.card.expYear || '').slice(-2)}`;
+            }
+            if (!cardCvv) cardCvv = item.card.code || '';
+        } else if (item.identity) {
+            type = 'identity';
+            const fullName = [item.identity.firstName, item.identity.lastName].filter(Boolean).join(' ');
+            if (!user) user = fullName || item.identity.username || '';
+            if (!pass) pass = item.identity.passportNumber || item.identity.licenseNumber || item.identity.ssn || item.identity.phone || item.identity.email || '';
+        } else if (item.sshKey) {
+            type = 'ssh';
+            if (!user) user = item.sshKey.keyFingerprint || item.sshKey.publicKey || '';
+            if (!pass) pass = item.sshKey.privateKey || '';
+        } else if (item.type === 2 && !pass && notes) {
+            // Bitwarden Secure Note: store note body in masked/revealable pass field
+            type = 'identity';
+            if (!user) user = 'Secure Note';
+            pass = notes;
         }
         
-        if (service && pass) {
-            parsed.push({
+        if (service && (pass || user || notes)) {
+            const entry = {
                 id: Date.now() + index,
+                type,
                 category: category,
                 service: service.trim(),
                 user: user.trim(),
-                pass: pass,
+                pass: pass || '',
                 tags: tags,
                 notes: notes.trim()
-            });
+            };
+            if (totp && String(totp).trim() && type === 'login') {
+                entry.totp = String(totp).trim();
+            }
+            if (type === 'card') {
+                if (cardExpiry) entry.cardExpiry = String(cardExpiry).trim();
+                if (cardCvv) entry.cardCvv = String(cardCvv).trim();
+            }
+            parsed.push(entry);
         }
     });
     return parsed;
@@ -950,12 +1619,13 @@ function parseJSONImportData(jsonString) {
 
 function handleJSONImport(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const imported = parseJSONImportData(e.target.result);
             vaultData.push(...imported);
             renderDashboard();
             renderVault();
+            await persistEncryptedVault();
             showToast(`Imported ${imported.length} records successfully.`);
         } catch (err) {
             alert("Error parsing JSON file. Check format.");
@@ -966,7 +1636,7 @@ function handleJSONImport(file) {
 
 function handleCSVImport(file) {
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const rows = parseCSVContent(e.target.result);
             if (rows.length === 0) return;
@@ -982,11 +1652,12 @@ function handleCSVImport(file) {
                 return -1;
             };
             
-            const serviceIdx = findIndex(['service', 'name', 'url', 'title']);
-            const userIdx = findIndex(['username', 'login_username', 'user']);
+            const serviceIdx = findIndex(['service', 'name', 'url', 'title', 'account']);
+            const userIdx = findIndex(['username', 'login_username', 'user', 'login name']);
             const passIdx = findIndex(['password', 'login_password', 'pass']);
-            const notesIdx = findIndex(['notes', 'extra', 'description']);
-            const categoryIdx = findIndex(['category', 'folder', 'grouping']);
+            const totpIdx = findIndex(['totp', 'login_totp', 'otp']);
+            const notesIdx = findIndex(['notes', 'extra', 'description', 'comments']);
+            const categoryIdx = findIndex(['category', 'folder', 'grouping', 'group']);
             const tagsIdx = findIndex(['tags', 'tag', 'labels']);
             
             const hasHeader = (serviceIdx !== -1 || userIdx !== -1 || passIdx !== -1);
@@ -996,12 +1667,13 @@ function handleCSVImport(file) {
                 const row = rows[i];
                 if (row.length < 2) continue;
                 
-                let service = "", user = "", pass = "", notes = "", category = "General", tags = [];
+                let service = "", user = "", pass = "", totp = "", notes = "", category = "General", tags = [];
                 
                 if (hasHeader) {
                     if (serviceIdx !== -1) service = row[serviceIdx] || "";
                     if (userIdx !== -1) user = row[userIdx] || "";
                     if (passIdx !== -1) pass = row[passIdx] || "";
+                    if (totpIdx !== -1) totp = row[totpIdx] || "";
                     if (notesIdx !== -1) notes = row[notesIdx] || "";
                     if (categoryIdx !== -1) category = row[categoryIdx] || "General";
                     if (tagsIdx !== -1 && row[tagsIdx]) {
@@ -1015,7 +1687,7 @@ function handleCSVImport(file) {
                 }
                 
                 if (service && pass) {
-                    vaultData.push({
+                    const entry = {
                         id: Date.now() + Math.floor(Math.random() * 1000) + count,
                         category: category,
                         service: service.trim(),
@@ -1023,13 +1695,16 @@ function handleCSVImport(file) {
                         pass: pass,
                         tags: tags,
                         notes: notes.trim()
-                    });
+                    };
+                    if (totp.trim()) entry.totp = totp.trim();
+                    vaultData.push(entry);
                     count++;
                 }
             }
             
             renderDashboard();
             renderVault();
+            await persistEncryptedVault();
             showToast(`Imported ${count} entries.`);
         } catch (e) {
             alert("Error parsing CSV data.");
@@ -1279,11 +1954,12 @@ function exportToCsv() {
         return alert("Vault is empty or locked.");
     }
     
-    const headers = ["Service", "Username", "Password", "Category", "Tags", "Notes"];
+    const headers = ["Service", "Username", "Password", "TOTP", "Category", "Tags", "Notes"];
     const rows = vaultData.map(item => [
         item.service,
         item.user,
         item.pass,
+        item.totp || '',
         item.category,
         (item.tags || []).join(';'),
         item.notes || ''
@@ -1300,15 +1976,6 @@ function exportToCsv() {
     a.download = 'vault_export_unencrypted.csv';
     a.click();
     showToast("Exported unencrypted CSV.");
-}
-
-// --- Session & UI Settings Wipes ---
-
-function confirmWipeSession() {
-    if (confirm("Wipe entire local session? Any unsaved changes will be lost permanently if you have not exported your data file!")) {
-        lockVault();
-        location.reload();
-    }
 }
 
 // --- Interface Helper & Toast Utilities ---
@@ -1441,6 +2108,10 @@ if (typeof window !== 'undefined') {
         window.addEventListener(evt, resetAutoLock, true);
     });
 
+    ['input', 'change'].forEach(evt => {
+        window.addEventListener(evt, syncFloatingLabels, true);
+    });
+
     window.addEventListener('online', updateOnlineStatus);
     window.addEventListener('offline', updateOnlineStatus);
 
@@ -1453,6 +2124,7 @@ if (typeof window !== 'undefined') {
         }
         updateOnlineStatus();
         checkSavedVault();
+        syncFloatingLabels();
     };
 }
 
@@ -1463,10 +2135,14 @@ export {
     deriveKey,
     encrypt,
     decrypt,
+    base32ToUint8,
+    parseTotpInput,
+    generateTOTP,
     base64ToUint8,
     uint8ToBase64,
     escapeHtml,
     parseCSVContent,
     parseJSONImportData,
+    parseKeePassXML,
     getReusedPasswordSet
 };

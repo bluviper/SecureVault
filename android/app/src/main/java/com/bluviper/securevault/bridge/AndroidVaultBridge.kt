@@ -76,6 +76,22 @@ class AndroidVaultBridge(
         return vaultFile.exists() && vaultFile.length() > 0
     }
 
+    /**
+     * Synchronizes unlocked credentials into memory cache for system-wide autofill matching.
+     */
+    @JavascriptInterface
+    fun syncDecryptedVault(plaintextJson: String) {
+        com.bluviper.securevault.autofill.VaultMemoryCache.setFromPlaintextJson(plaintextJson)
+    }
+
+    /**
+     * Clears transient credentials from memory cache when vault locks.
+     */
+    @JavascriptInterface
+    fun lockVault() {
+        com.bluviper.securevault.autofill.VaultMemoryCache.clear()
+    }
+
     @JavascriptInterface
     fun isBiometricAvailable(): Boolean {
         return KeystoreHelper.isBiometricAvailable(activity)

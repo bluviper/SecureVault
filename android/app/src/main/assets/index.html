@@ -3359,6 +3359,9 @@ async function persistEncryptedVault() {
         const payloadJson = JSON.stringify(payload);
         if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.saveVault === 'function') {
             window.AndroidVaultBridge.saveVault(payloadJson);
+            if (typeof window.AndroidVaultBridge.syncDecryptedVault === 'function') {
+                window.AndroidVaultBridge.syncDecryptedVault(JSON.stringify(vaultData));
+            }
         } else if (typeof localStorage !== 'undefined') {
             localStorage.setItem('securevault_encrypted_payload', payloadJson);
         }
@@ -3528,6 +3531,10 @@ function lockVault() {
     const progressBar = document.getElementById('auto-lock-progressbar');
     if (progressBar) progressBar.style.transform = 'scaleX(0)';
 
+    if (typeof window !== 'undefined' && window.AndroidVaultBridge && typeof window.AndroidVaultBridge.lockVault === 'function') {
+        window.AndroidVaultBridge.lockVault();
+    }
+
     syncFloatingLabels();
     checkSavedVault();
 }
@@ -3544,6 +3551,11 @@ function showApp() {
     if (appUi) appUi.classList.remove('hidden');
     if (statusText) statusText.innerText = 'Vault Unlocked';
     
+    if (typeof window !== 'undefined' && window.AndroidVaultBridge && typeof window.AndroidVaultBridge.syncDecryptedVault === 'function') {
+        window.AndroidVaultBridge.syncDecryptedVault(JSON.stringify(vaultData));
+    }
+
+    switchTab('vault');
     renderDashboard();
     renderVault();
     startAutoLockTimer();

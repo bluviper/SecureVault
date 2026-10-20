@@ -49,20 +49,21 @@ Backtrackable snapshot. Read this before resuming work. Supersedes guessing from
 
 ---
 
-## 3. Next Up: Phase 2 Roadmap (Native Autofill Engine)
+---
 
-To be tackled next on `feat/android-companion`:
+## 3. Phase 2 (Native Autofill Engine) — COMPLETED
 1. **`AutofillService` Registration**:
-   - Declare `com.bluviper.securevault.autofill.VaultAutofillService` in `AndroidManifest.xml` with `BIND_AUTOFILL_SERVICE` permission.
-2. **Headless Native Autofill Parser (`onFillRequest`)**:
-   - Decrypt the native `context.filesDir/vault.json` directly using `VaultCrypto.decryptWithKey` (leveraging the cached/unwrapped AES key or triggering Biometric auth).
-   - Parse `AssistStructure` to detect username, email, and password fields across third-party Android apps and Chrome/Firefox.
-3. **Inline Suggestions (IME) Support**:
-   - Provide `InlinePresentation` datasets so Gboard / SwiftKey display credentials directly on the keyboard suggestion strip (Android 11+).
-4. **Credential Save Request (`onSaveRequest`)**:
-   - Prompt the user to save new credentials entered in other apps back into `vault.json` atomically.
-5. **App Linking / Package Identification**:
-   - Digital Asset Links heuristic matching package names (e.g., `com.twitter.android`) to domain URLs.
+   - Declared `com.bluviper.securevault.autofill.VaultAutofillService` in `AndroidManifest.xml` with `BIND_AUTOFILL_SERVICE` permission and `res/xml/autofill_service_config.xml`.
+2. **Headless Native Autofill Parser (`AutofillStructureParser.kt`)**:
+   - Walks `AssistStructure` node hierarchy to extract target package, web domain, username/email `AutofillId`, and password `AutofillId`.
+3. **Session Cache & Heuristic Matching (`VaultMemoryCache.kt`)**:
+   - Parses unlocked vault items in memory; matches foreground packages and domains with 5-minute auto-wipe timeout.
+4. **Biometric Autofill Authentication (`AutofillAuthActivity.kt`)**:
+   - If vault is locked when autofill is requested, returns an authentication dataset. Tapping prompts the hardware fingerprint sensor, unwraps the AES master key from the Keystore, and delivers credentials to third-party apps.
+5. **Autofill RemoteViews Dropdown Layouts**:
+   - Built `res/layout/autofill_dataset_item.xml` (service title + username) and `res/layout/autofill_auth_item.xml` (unlock prompt).
+6. **Automated Unit Tests**:
+   - Added `AutofillMatchingTest.kt` verifying domain, package, and subdomain matching + non-login credential filtering. All Android unit tests pass (100%).
 
 ---
 

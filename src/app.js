@@ -715,12 +715,20 @@ function updateTimeout() {
 
 function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
     
     const tabBtn = document.getElementById(`tab-btn-${tab}`);
+    const mobBtn = document.getElementById(`mob-nav-${tab}`);
     const tabPane = document.getElementById(`tab-${tab}`);
     if (tabBtn) tabBtn.classList.add('active');
+    if (mobBtn) mobBtn.classList.add('active');
     if (tabPane) tabPane.classList.add('active');
+
+    if (tab === 'security') {
+        renderDashboard();
+    }
+    resetAutoLock();
 }
 
 // --- Dashboard & Metrics Visualizer ---
@@ -758,29 +766,32 @@ function renderDashboard() {
 }
 
 /**
- * Filters credential list by password strength.
+ * Filters credential list by password strength and switches to vault tab.
  */
 function filterByStrength(strength) {
     activeDashboardFilter = strength === 'weak' ? 'weak' : null;
     updateFilterBarUI();
+    switchTab('vault');
     renderVault();
 }
 
 /**
- * Filters credential list by password reuse.
+ * Filters credential list by password reuse and switches to vault tab.
  */
 function filterByReused() {
     activeDashboardFilter = 'reused';
     updateFilterBarUI();
+    switchTab('vault');
     renderVault();
 }
 
 /**
- * Filters credential list by password vulnerability (< 12 chars).
+ * Filters credential list by password vulnerability (< 12 chars) and switches to vault tab.
  */
 function filterByVulnerable() {
     activeDashboardFilter = 'vulnerable';
     updateFilterBarUI();
+    switchTab('vault');
     renderVault();
 }
 

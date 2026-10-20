@@ -1,0 +1,6 @@
+<resources>
+    <color name="vault_black">#0B0D11</color>
+    <color name="vault_surface">#14171F</color>
+    <color name="vault_accent">#00DC82</color>
+    <color name="vault_text">#F3F4F6</color>
+</resources>

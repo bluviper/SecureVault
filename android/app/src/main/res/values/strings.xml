@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">SecureVault</string>
+    <string name="biometric_prompt_title">Unlock SecureVault</string>
+    <string name="biometric_prompt_subtitle">Confirm your biometric credential to unlock your vault</string>
+    <string name="biometric_prompt_cancel">Use Master Password</string>
+</resources>

@@ -454,7 +454,7 @@ function showInitPrompt() {
 }
 
 /**
- * Persists current encrypted vault state in browser local storage.
+ * Persists current encrypted vault state in browser local storage or Android native storage.
  */
 async function persistEncryptedVault() {
     if (!masterKey || !salt) return;
@@ -465,18 +465,28 @@ async function persistEncryptedVault() {
             iv: encrypted.iv,
             data: encrypted.data
         };
-        localStorage.setItem('securevault_encrypted_payload', JSON.stringify(payload));
+        const payloadJson = JSON.stringify(payload);
+        if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.saveVault === 'function') {
+            window.AndroidVaultBridge.saveVault(payloadJson);
+        } else if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('securevault_encrypted_payload', payloadJson);
+        }
     } catch (e) {
-        console.error("Failed to persist encrypted vault locally", e);
+        console.error("Failed to persist encrypted vault", e);
     }
 }
 
 /**
- * Checks for previously saved encrypted vault in browser local storage.
+ * Checks for previously saved encrypted vault in Android private storage or browser local storage.
  */
 function checkSavedVault() {
-    if (typeof localStorage === 'undefined') return false;
-    const saved = localStorage.getItem('securevault_encrypted_payload');
+    let saved = null;
+    if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.loadVault === 'function') {
+        saved = window.AndroidVaultBridge.loadVault();
+    } else if (typeof localStorage !== 'undefined') {
+        saved = localStorage.getItem('securevault_encrypted_payload');
+    }
+
     if (saved) {
         try {
             const content = JSON.parse(saved);
@@ -484,10 +494,13 @@ function checkSavedVault() {
                 salt = base64ToUint8(content.salt);
                 pendingData = { iv: content.iv, data: content.data };
                 showUnlockPrompt();
+                updateBiometricUnlockButton();
                 return true;
             }
         } catch (e) {
-            localStorage.removeItem('securevault_encrypted_payload');
+            if (!window.AndroidVaultBridge && typeof localStorage !== 'undefined') {
+                localStorage.removeItem('securevault_encrypted_payload');
+            }
         }
     }
     showInitPrompt();
@@ -513,6 +526,55 @@ async function initializeVault() {
 }
 
 /**
+ * Updates visibility of the native Biometric Unlock button if running on Android with enrolled credentials.
+ */
+function updateBiometricUnlockButton() {
+    const bioBtn = document.getElementById('btn-biometric-unlock');
+    if (!bioBtn) return;
+    if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.hasBiometricKey === 'function') {
+        if (window.AndroidVaultBridge.hasBiometricKey()) {
+            bioBtn.classList.remove('hidden');
+            return;
+        }
+    }
+    bioBtn.classList.add('hidden');
+}
+
+/**
+ * Triggers native Android BiometricPrompt unlock.
+ */
+function triggerBiometricUnlock() {
+    if (typeof window === 'undefined' || !window.AndroidVaultBridge || typeof window.AndroidVaultBridge.requestBiometricUnlock !== 'function') return;
+    window.AndroidVaultBridge.requestBiometricUnlock('onNativeBiometricResult');
+}
+
+if (typeof window !== 'undefined') {
+    window.onNativeBiometricResult = function(success, decryptedJson, errorMsg) {
+        if (success && decryptedJson) {
+            try {
+                vaultData = JSON.parse(decryptedJson);
+                pendingData = null;
+                showApp();
+                showToast("Unlocked with biometrics.");
+            } catch (e) {
+                showToast("Failed to parse vault: " + e.message);
+            }
+        } else if (errorMsg) {
+            showToast("Biometric: " + errorMsg);
+        }
+    };
+
+    window.onNativeBiometricEnrolled = function(success, errorMsg) {
+        if (success) {
+            showToast("Biometric unlock enabled.");
+            updateBiometricUnlockButton();
+        } else if (errorMsg) {
+            showToast("Biometric setup: " + errorMsg);
+        }
+    };
+}
+
+/**
  * Unlocks vault by decrypting loaded data.
  */
 async function unlockVault() {
@@ -530,6 +592,17 @@ async function unlockVault() {
         await persistEncryptedVault();
         showApp();
         showToast("Vault unlocked.");
+
+        // Offer biometric enrollment on Android if hardware is available and not yet enrolled
+        if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.isBiometricAvailable === 'function') {
+            if (window.AndroidVaultBridge.isBiometricAvailable() && !window.AndroidVaultBridge.hasBiometricKey()) {
+                setTimeout(() => {
+                    if (confirm("Enable fingerprint unlock for SecureVault?")) {
+                        window.AndroidVaultBridge.requestEnableBiometric(pw, 'onNativeBiometricEnrolled');
+                    }
+                }, 400);
+            }
+        }
     } catch (e) {
         masterKey = null;
         alert("Invalid master password.");
@@ -2060,14 +2133,22 @@ function toggleTheme() {
 function copyCredentialPassword(text) {
     if (!text) return;
     
-    navigator.clipboard.writeText(text).then(() => {
+    if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.copyToClipboard === 'function') {
+        window.AndroidVaultBridge.copyToClipboard("Password", text, true);
+    }
+
+    const startCountdown = () => {
         let seconds = 30;
         clearInterval(clipboardClearTimer);
         
         const tick = () => {
             if (seconds <= 0) {
                 clearInterval(clipboardClearTimer);
-                navigator.clipboard.writeText('');
+                if (window.AndroidVaultBridge && typeof window.AndroidVaultBridge.copyToClipboard === 'function') {
+                    window.AndroidVaultBridge.copyToClipboard("Password", "", true);
+                } else if (navigator.clipboard) {
+                    navigator.clipboard.writeText('');
+                }
                 showToast("Clipboard cleared for safety.");
             } else {
                 showToast("Password copied to clipboard.", seconds--);
@@ -2075,7 +2156,13 @@ function copyCredentialPassword(text) {
         };
         tick();
         clipboardClearTimer = setInterval(tick, 1000);
-    });
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(startCountdown).catch(startCountdown);
+    } else {
+        startCountdown();
+    }
 }
 
 /**

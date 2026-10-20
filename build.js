@@ -70,6 +70,13 @@ function build() {
         // Write output
         fs.writeFileSync(DIST_FILE, html, 'utf8');
         console.log(`🚀 Build complete! Output written to ${DIST_FILE} (${fs.statSync(DIST_FILE).size} bytes)`);
+
+        // Sync to Android assets if present
+        const androidAssetPath = path.join(__dirname, 'android', 'app', 'src', 'main', 'assets', 'index.html');
+        if (fs.existsSync(path.dirname(androidAssetPath))) {
+            fs.copyFileSync(DIST_FILE, androidAssetPath);
+            console.log(`  📱 Synced to Android assets: ${androidAssetPath}`);
+        }
     } catch (error) {
         console.error('❌ Build failed:', error.message);
     }

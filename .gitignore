@@ -13,5 +13,8 @@ vault_export_unencrypted*
 *.apkm
 *.apk
 .claude/
+*.jks
+*.keystore
+*.key
 
 

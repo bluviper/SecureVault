@@ -64,6 +64,9 @@ Backtrackable snapshot. Read this before resuming work. Supersedes guessing from
    - Built `res/layout/autofill_dataset_item.xml` (service title + username) and `res/layout/autofill_auth_item.xml` (unlock prompt).
 6. **Automated Unit Tests**:
    - Added `AutofillMatchingTest.kt` verifying domain, package, and subdomain matching + non-login credential filtering. All Android unit tests pass (100%).
+7. **Android 14+ Credential Manager (`VaultCredentialProviderService.kt`)**:
+   - Implemented `CredentialProviderService` with `res/xml/credential_provider_config.xml` (`TYPE_PASSWORD_CREDENTIAL`) and vector logo `res/drawable/ic_vault_logo.xml`.
+   - Added `openAutofillSettings()` in `AndroidVaultBridge.kt`. SecureVault is verified selectable in Android 14+ unified "Passwords, passkeys & autofill" settings.
 
 ---
 
